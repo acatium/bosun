@@ -2,7 +2,10 @@
 targetScope = 'resourceGroup'
 
 param location string = resourceGroup().location
-param prefix string = 'contoso'
+@description('Firm prefix from config/profiles/<firm>.yaml, passed in by the pipeline.')
+@minLength(2)
+@maxLength(9)
+param prefix string
 
 var tags = {
   managedBy: 'github-actions'

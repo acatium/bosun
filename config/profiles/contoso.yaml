@@ -1,6 +1,6 @@
-# Contoso Capital: a fictional alternative investment firm used to exercise the platform.
-# Domains and ownership are primitives. They live here as data, are checked in CI,
-# and are applied to Entra ID by the pipeline rather than maintained by hand.
+# Contoso Capital: the example firm profile, a fictional alternative investment firm.
+# A firm profile holds the org primitives (domains, personas, owners) as data. They are checked in CI
+# and applied to Entra ID by the pipeline. To port this platform, add config/profiles/<your-firm>.yaml.
 
 firm:
   name: Contoso Capital
