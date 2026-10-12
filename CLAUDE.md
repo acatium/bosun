@@ -53,28 +53,38 @@ Decisions already taken (rationale in `docs/decisions.md`):
 
 ## The five-minute demo (this is the scope)
 
-Anything not needed for these beats is out of scope unless the owner agrees otherwise.
+Every beat starts from a business event, and names where the firm's own systems would plug in. Anything not
+needed for these beats is out of scope unless the owner agrees otherwise.
 
-1. **One model** (0:00). Open the LinkML model: domains, roles, terms, rules, about 40 lines. Today each
-   of these lives with a different team.
-2. **Identity and groups** (0:30). The analyst persona was given a department this morning; show the
-   domain group, the Teams and sites that followed, and that nobody granted anything by hand.
-3. **A user creates a deal room** (1:00). As the partner, in Teams: new team from the "Deal Room"
-   template, Confidential label, add the deal team, drop in a document.
-4. **The backplane does the rest** (1:45). Run the compiler from Claude Code. It finds Atlas, applies the
-   site template and the domain, deal and sensitivity tags. Open the document's properties: tagged, by
-   nobody. The conformance report shows Atlas conformant.
-5. **Entitlements, seen by two people** (2:45). Switch to the analyst's browser profile: the research
-   site is there, Atlas is not, in search or from the agent. Back as the partner: the Atlas agent answers
-   with citations.
-6. **One vocabulary across data and documents** (3:30). The partner asks the portfolio data agent which
-   companies are behind plan on EBITDA; the answer uses the same glossary terms that tag the documents.
-7. **The coordination tax, removed** (4:15). In Claude Code: "Onboard a new data source to Private
-   Equity". One model change, compiled, confirmed in the conformance report, the git diff as the audit trail.
-8. **Close** (4:45). Every object traces to its domain, terms and access. Switch the compiler off and
+1. **A CIM arrives for Project Atlas** (0:00). As the partner, in Teams: new team from the "Deal Room"
+   template, Confidential label, add the associate, drop in the CIM. *Plug-in: in practice the CIM arrives
+   from a banker's virtual data room or an inbox; that intake would trigger this step.*
+2. **The backplane does the rest** (0:45). Run the compiler from Claude Code. Show why it knew what to do:
+   the model (domains, roles, terms, rules in one file). It finds Atlas, applies the site template and the
+   domain, deal and sensitivity tags. Open the CIM's properties: tagged, by nobody. The conformance report
+   shows Atlas conformant.
+3. **Research and contextualisation** (1:45). The partner asks the Atlas agent for the CIM's key risks and
+   how the business compares with similar portfolio companies; it answers with citations. *Plug-in: this is
+   where licensed research, prior IC memos and sector theses join as further stores, each declared in the
+   model with its domain and tags, so the agent only ever sees what the asker can.*
+4. **A new joiner, and an information barrier** (2:30). Switch to the analyst, who joined another deal team
+   last week: their department was set and the right groups, Teams and sites followed. The research site is
+   there; Atlas is not, in search or from the agent. *Plug-in: the HR system sets the department.*
+5. **The month-end portfolio pack lands** (3:00). The partner asks the portfolio data agent which companies
+   are behind plan on EBITDA; the answer uses the same glossary terms that tag the documents. *Plug-in: the
+   firm's warehouse, semantic models or portfolio monitoring tool sit here; terms bind to whatever
+   calculation finance already treats as authoritative.*
+6. **The firm licenses a new data source** (4:00). In Claude Code: "Onboard a new data source to Private
+   Equity". One model change, compiled, confirmed in the conformance report, the git diff as the audit
+   trail. Today that is a ticket to each team that owns a piece of it.
+7. **Close** (4:45). Every object traces to its domain, terms and access. Switch the compiler off and
    everything still works; only automation and drift checks stop.
 
-Slow steps (agent answers take 20-60 seconds) are started early and talked over.
+Slow steps (agent answers take 20-60 seconds) are started early and talked over. The analyst's department
+is set well before the call, because dynamic group updates take minutes.
+
+Demo content (all fictional, in the repo): a CIM for Project Atlas, a few public-style research notes for
+the research site, and the existing portfolio data.
 
 ## Definition of done
 
