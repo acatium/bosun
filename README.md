@@ -44,17 +44,25 @@ Each claim the architecture makes has a pass/fail test. Results are captured in 
 
 | Path | Purpose |
 |------|---------|
-| `config/org.yaml` | Contoso Capital's domains, personas and owners: the org primitives, as data |
-| `config/guardrails.yaml` | Naming prefix, allowed Azure resource types, allowed Graph permissions |
-| `tools/` | Deterministic checks run in CI |
+| `config/profiles/` | Firm profiles: domains, personas and owners, the org primitives as data. `contoso.yaml` is the example |
+| `config/guardrails.yaml` | Firm-agnostic rules: prefix format, allowed Azure resource types, allowed Graph permissions |
+| `tools/` | Deterministic checks run in CI: guardrails, portability and deny-list |
 | `infra/` | Azure infrastructure (Bicep) |
 | `bootstrap/` | The one manual step: creating the trust between GitHub and Entra ID |
 | `results/` | Captured validation results |
+| `.env.example` | Every environment-specific setting, named and documented. None of them are secrets |
+
+## Adopting it
+
+Bosun is built to be adopted, not just demonstrated. A firm creates its own copy from this template,
+adds its profile, fills in `.env` and runs bootstrap once. CI then refuses any change that hard-codes a
+tenant, subscription or organization identifier, so the repository stays portable as it grows.
+See [PORTING.md](PORTING.md).
 
 ## Environment notes
 
 - Runs on Microsoft 365 E3. Features that need E5 (default library labels, access reviews, lifecycle
   workflows) are implemented by the harness instead, which keeps the guardrails under the platform's
   own control on any licence tier.
-- All Azure resources live in one resource group with the `contoso` prefix and are torn down after
-  validation.
+- All Azure resources live in one resource group, named with the firm profile's prefix, and are torn
+  down after validation.

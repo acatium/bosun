@@ -19,8 +19,17 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install pyyaml==6.0.2
-      - name: Org model, infrastructure and bootstrap allowlists
+      - name: Firm profile, infrastructure and bootstrap allowlists
+        env:
+          FIRM_PROFILE: ${{ vars.FIRM_PROFILE }}
         run: python tools/check_guardrails.py
+      - name: Portability (no environment-specific identifiers in tracked files)
+        env:
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
+        run: python tools/check_portability.py
       - name: Deny-list scan (files and full history)
         env:
           DENYLIST: ${{ secrets.DENYLIST }}
@@ -45,3 +54,4 @@ jobs:
           az deployment group what-if
           --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}"
           --template-file infra/main.bicep
+          --parameters prefix="${{ vars.FIRM_PREFIX }}"

@@ -35,4 +35,5 @@ jobs:
           az deployment group create
           --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}"
           --template-file infra/main.bicep
+          --parameters prefix="${{ vars.FIRM_PREFIX }}"
           --name "main-${{ github.run_number }}"
