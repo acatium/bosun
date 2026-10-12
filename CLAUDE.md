@@ -29,17 +29,20 @@ check whether one of these already does it:
 |---|---|
 | Who can ask | Entra group, plus an app registration with assignment required |
 | What an agent can read | Managed identity; Graph `Sites.Selected` on one SharePoint site |
-| Orchestration | Azure AI Foundry agent using a Claude deployment |
-| Structured Q&A | Fabric data agent over the lakehouse and semantic model, called as a Foundry tool |
-| Semantic layer | Fabric semantic model (Direct Lake), with a small set of documented measures bound to glossary terms |
+| Orchestration | User-scoped, holds no keys: Microsoft 365 Copilot where licensed; Claude Code (optionally on a Foundry Claude deployment) otherwise. Foundry Agent Service does not support Claude models |
+| Structured Q&A (store agent) | Fabric data agent over the semantic model, published as an MCP server; reads data through the workspace identity (the store key) |
+| Org domains | Fabric Domains, created from the firm profile |
+| Semantic layer | Fabric semantic model (Direct Lake, kept as TMDL in git), with a small set of measures bound to glossary terms |
+| Ontology | Fabric IQ ontology (preview) when adopted; until then, the semantic model's tables and relationships |
 | Retrieval over documents | Azure AI Search |
-| Prompt injection, content safety | Azure AI Content Safety (Prompt Shields). Verify which Foundry filters apply to Claude deployments |
+| Prompt injection, content safety | Azure AI Content Safety (Prompt Shields) for Azure OpenAI models. Foundry applies no built-in content filtering to Claude deployments; Claude relies on Anthropic's safeguards |
 | Answer quality | Foundry evaluations (groundedness) on a small test set |
 | Audit and tracing | Application Insights / Log Analytics, plus the Microsoft 365 audit log |
 | Resource rules | Azure Policy on the resource group |
 
-Known custom pieces, kept small enough to explain line by line: the runtime citation check that blocks
-untraced figures, and output label inheritance (an E3 licensing gap).
+Known custom pieces, kept small enough to explain line by line: `gateway/bosun_gateway.py` (the runtime
+check that blocks figures without a glossary term or as-of month, plus the call log), and output label
+inheritance (an E3 licensing gap, not yet built).
 
 ## Environment facts
 
@@ -87,13 +90,15 @@ do not test, or results without evidence. Resources left running.
 
 ## Current state and next steps
 
-Done: repository scaffold, CI guardrails, portability layer, bootstrap script (not yet run).
+Done (2026-10-12 run, see `results/`): value management store end to end: sample data, lakehouse, TMDL
+semantic model with glossary-bound measures, data agent keyed by the workspace identity, Fabric Domains,
+access group, bosun-gateway, golden-question evals and access proofs. Bootstrap and the deploy pipeline
+exist but were not used.
 
 Next, in order:
-1. Run bootstrap; create the F2 Fabric capacity.
-2. Value management: lakehouse, portfolio company data, semantic model with glossary-bound measures,
-   Fabric data agent.
-3. Deal flow: deal-room SharePoint site, managed identity with `Sites.Selected`, Azure AI Search index,
-   Foundry agent with Content Safety.
-4. The bridge, the citation check and evaluations.
-5. Capture results in `results/`, tear down, then prepare the repository to go public.
+1. Deal flow as a second keyed store: deal-room SharePoint site, an agent identity granted `Sites.Selected`
+   on that one site, registered in `config/stores.yaml`.
+2. Deal room provisioning and teardown as one workflow (Power Automate or Logic Apps), logging every action.
+3. The bridge: diligence figures become the value creation plan baseline under the same glossary terms.
+4. Tighten the gateway check from per line to per figure; send its log to Log Analytics.
+5. Prepare the repository to go public (commit author emails, deny-list, branch protection).

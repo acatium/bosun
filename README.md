@@ -1,68 +1,89 @@
 # Bosun
 
-A governed AI platform, demonstrated on **Contoso Capital**, a fictional alternative investment firm.
-(Contoso is Microsoft's standard fictional company. Everything else here is built from scratch.)
+A governed AI foundation on the Microsoft stack, demonstrated on **Contoso Capital**, a fictional
+alternative investment firm. (Contoso and its portfolio companies are Microsoft's standard fictional
+names. Everything else here is built from scratch.)
 
-Bosun shows how an investment firm can let people use AI agents freely, because the rules that keep
-it safe are enforced in code rather than in prompts or policy documents.
+Bosun's claim is that people can use AI agents freely when a few governed primitives sit underneath them
+and the rules are enforced by the platform, not by prompts. It is built almost entirely from native
+Microsoft components; the one custom piece is a small, auditable gateway.
 
-## The idea in one paragraph
+## The model
 
-A small set of governed primitives (identity, organizational domains, a closed business glossary and
-an ontology) sits underneath everything. People work through a **user-scoped orchestrator** that runs
-as them and holds no keys. Behind it, **store-scoped agents** each hold one key to one data store,
-limited to specific actions, and can be invoked only by people who can already access that store.
-A **deterministic harness** checks every call and output: untraced figures are blocked, outputs
-inherit the strictest label of their sources, and every agent action is logged.
+**Four primitives**, each with an owner:
 
-## How changes flow
+| Primitive | Native component here | Source of truth |
+|---|---|---|
+| Identity | Entra ID users and security groups | Entra (HR-driven in production) |
+| Org domains | Fabric Domains (Private Equity, Finance & Operations, Technology) | [`config/profiles/contoso.yaml`](config/profiles/contoso.yaml) |
+| Closed business glossary | Each term bound to exactly one semantic model measure | [`config/glossary.yaml`](config/glossary.yaml) |
+| Ontology | Tables and relationships in the semantic model; Fabric IQ ontology (preview) is the native next step | [`semantic-model/`](semantic-model/) |
 
-Nothing in this environment is changed by hand.
+**Two agent layers**:
 
-1. Agents (Claude in chat or Claude Code) propose changes as pull requests.
-2. CI runs deterministic guardrail checks and an Azure what-if preview.
-3. A human owner approves. Merges to `main` deploy through the `production` environment.
-4. GitHub Actions signs in to Azure with workload identity federation. There are no stored secrets
-   for Azure anywhere in this repo or its settings.
+- **Store agents are domain-scoped and keyed.** Each store (here, a Fabric workspace) has one agent. The
+  agent reads data through the store's own identity (the workspace identity), not the caller's, so its
+  reach is one store and nothing else. Only people on the store's access list can invoke it.
+- **The orchestrator is user-scoped and holds no keys.** Claude Code here, Microsoft 365 Copilot in a
+  licensed tenant. It acts as the person using it and can only reach stores that person can already reach.
 
-## Validation
+**One deterministic rule on top**: every figure in an answer must name a glossary term and an as-of month,
+or the answer is blocked with the reason. This is the only custom code ([`gateway/`](gateway/)), and it is
+small enough to read in a few minutes.
 
-Each claim the architecture makes has a pass/fail test. Results are captured in [`results/`](results/).
+```
+Person ──► Orchestrator (Claude Code, runs as the person, no keys)
+              │  MCP
+              ▼
+           bosun-gateway (local, no keys: forwards the person's token, checks every answer, logs every call)
+              │  MCP, person's Entra token
+              ▼
+           Store agent (Fabric data agent)  ◄── invocation gate: store access group
+              │  store key: workspace identity
+              ▼
+           Semantic model (glossary-bound measures) ──► Lakehouse (OneLake)
+```
 
-| # | Test | What passing proves | Status |
-|---|------|---------------------|--------|
-| 1 | Keyed store | An agent can read the one store it holds a key to, and is denied every other | Pending |
-| 2 | Invocation gate | A person outside a store's access group cannot make its agent act | Pending |
-| 3 | Orchestrator runs as the user | Two people asking the same question see only what each can access | Pending |
-| 4 | Provision and teardown | A deal room appears in minutes and its agent's key is revoked on retirement | Pending |
-| 5 | Label inheritance | A saved output carries the strictest label among its sources | Pending |
-| 6 | Citation guardrail | An answer containing an untraced figure is blocked, with the reason shown | Pending |
-| 7 | Ontology contracts | A malformed tool output is rejected deterministically | Pending |
-| 8 | Audit trail | Every action in tests 1-7 appears in the agent action log | Pending |
+## What was proved
+
+Evidence from real runs is in [`results/`](results/). Each claim has a pass/fail test.
+
+| # | Claim | Result |
+|---|---|---|
+| 1 | A person on the store's access list can ask its agent and get a governed answer | Pass |
+| 2 | A person not on the list is refused by the platform, with no Bosun code involved | See results |
+| 3 | The orchestrator reaches stores only as the person using it | Pass |
+| 4 | Answers match the authoritative calculation (golden questions vs DAX) | Pass, 3 of 3 |
+| 5 | An undefined term (IRR) is refused, not estimated | Pass |
+| 6 | A figure without a glossary term or as-of month is blocked, with the reason | Pass, on real agent output |
+| 7 | Every orchestrator call is logged with caller, store, question and verdict | Pass |
+
+Not yet built: deal room provisioning and teardown, `Sites.Selected` keys for SharePoint stores, label
+inheritance and the Microsoft 365 Copilot surface. These are described as the next steps in the results.
 
 ## Repository layout
 
 | Path | Purpose |
-|------|---------|
-| `config/profiles/` | Firm profiles: domains, personas and owners, the org primitives as data. `contoso.yaml` is the example |
-| `config/guardrails.yaml` | Firm-agnostic rules: prefix format, allowed Azure resource types, allowed Graph permissions |
-| `tools/` | Deterministic checks run in CI: guardrails, portability and deny-list |
-| `infra/` | Azure infrastructure (Bicep) |
-| `bootstrap/` | The one manual step: creating the trust between GitHub and Entra ID |
-| `results/` | Captured validation results |
-| `.env.example` | Every environment-specific setting, named and documented. None of them are secrets |
+|---|---|
+| `config/profiles/` | Firm profile: domains, personas and owners. `contoso.yaml` is the example |
+| `config/glossary.yaml` | The closed business glossary and each term's measure |
+| `config/stores.yaml` | Store registry: one entry per keyed store and its agent |
+| `data/portfolio/` | Sample operating data: four portfolio companies, actuals vs plan, value creation initiatives |
+| `semantic-model/` | The Direct Lake semantic model as TMDL (Microsoft's text format for models) |
+| `data-agent/` | The Fabric data agent definition |
+| `gateway/` | bosun-gateway, the one custom component |
+| `evals/` | Reviewed test questions with expected values |
+| `results/` | Captured evidence |
+| `tools/`, `.github/` | Repository hygiene checks run in CI |
+| `bootstrap/`, `infra/` | GitHub-to-Azure federation and pipeline foundation (not used in the 2026-10-12 run) |
 
-## Adopting it
+## Replicating it
 
-Bosun is built to be adopted, not just demonstrated. A firm creates its own copy from this template,
-adds its profile, fills in `.env` and runs bootstrap once. CI then refuses any change that hard-codes a
-tenant, subscription or organization identifier, so the repository stays portable as it grows.
-See [PORTING.md](PORTING.md).
+See [`REPLICATE.md`](REPLICATE.md). Everything needed is in this repository; nothing depends on the
+original tenant. The run costs a few dollars if torn down the same day.
 
 ## Environment notes
 
-- Runs on Microsoft 365 E3. Features that need E5 (default library labels, access reviews, lifecycle
-  workflows) are implemented by the harness instead, which keeps the guardrails under the platform's
-  own control on any licence tier.
-- All Azure resources live in one resource group, named with the firm profile's prefix, and are torn
-  down after validation.
+- Microsoft 365 E3. Fabric on a paid F2 capacity (data agents do not run on trial capacity). Users need a
+  Power BI licence or trial to query a semantic model on capacities below F64.
+- All Azure resources live in one resource group and are deleted after validation.

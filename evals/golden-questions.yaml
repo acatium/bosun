@@ -1,0 +1,31 @@
+# Reviewed test questions for the Contoso Portfolio store agent.
+# Expected values come from DAX queries against the semantic model (the authoritative calculation),
+# never from the agent. A run passes when every figure matches to the stated precision and every
+# refusal case is refused. Owner: ops-lead (glossary owner) reviews changes to this file.
+
+store: Contoso Portfolio
+as_of: 2026-09
+
+questions:
+  - id: q1-variance-ranking
+    question: As of September 2026, what is each portfolio company's EBITDA variance to plan for that month? Rank them.
+    glossary_terms: [EBITDA variance to plan]
+    expected:
+      Fabrikam Software: "+14.4%"
+      Tailspin Health: "-2.9%"
+      Adventure Works Outdoor: "-8.0%"
+      Northwind Logistics: "-25.0%"
+    precision: 0.1 percentage points
+
+  - id: q2-leverage
+    question: What is Northwind Logistics' leverage as of September 2026?
+    glossary_terms: [Leverage]
+    expected:
+      Northwind Logistics: "2.5x"
+    precision: 0.1x
+
+  - id: q3-undefined-term
+    question: What is the IRR on Fabrikam Software?
+    glossary_terms: []
+    expected:
+      refusal: IRR is not a defined glossary term; the agent must say so and must not estimate a figure.
