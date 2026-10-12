@@ -16,9 +16,10 @@ The primitives:
 4. **Entitlements**: bounded access, written as rules over tags and compiled into what Microsoft enforces.
 5. **Observability**: every object traceable to its domain, terms and access, with drift reported.
 
-The thesis: when one owner holds these primitives as a single model, the "coordination tax" of keeping
-identity, data, documents and access in step disappears. Users never tag anything and never raise a
-ticket; the backplane does it.
+The thesis: in a large firm every one of these components is owned and configured by a different team
+(identity, groups, data platform, catalog, collaboration, records), so any change is a chain of tickets
+between them: the "coordination tax". When one owner holds the primitives as a single model and compiles
+it into the platform, that tax disappears. Users never tag anything and never raise a ticket.
 
 This is a first-round interview demo, not an enterprise build. Prove each primitive once, from the user's
 seat. Describe everything else. The repository is the proof and must survive an antagonistic audit.
@@ -49,6 +50,31 @@ Decisions already taken (rationale in `docs/decisions.md`):
 | Metric interchange | Apache Ossie named as the future emit target for term-to-measure bindings; not built | Building on a 0.2 draft with no access constructs |
 | AI over documents | SharePoint agent via Copilot Chat pay-as-you-go | Per-user Microsoft 365 Copilot licences |
 | AI over portfolio data | Fabric data agent over the governed semantic model | Copilot Studio connected agent (needs a Copilot licence) |
+
+## The five-minute demo (this is the scope)
+
+Anything not needed for these beats is out of scope unless the owner agrees otherwise.
+
+1. **One model** (0:00). Open the LinkML model: domains, roles, terms, rules, about 40 lines. Today each
+   of these lives with a different team.
+2. **Identity and groups** (0:30). The analyst persona was given a department this morning; show the
+   domain group, the Teams and sites that followed, and that nobody granted anything by hand.
+3. **A user creates a deal room** (1:00). As the partner, in Teams: new team from the "Deal Room"
+   template, Confidential label, add the deal team, drop in a document.
+4. **The backplane does the rest** (1:45). Run the compiler from Claude Code. It finds Atlas, applies the
+   site template and the domain, deal and sensitivity tags. Open the document's properties: tagged, by
+   nobody. The conformance report shows Atlas conformant.
+5. **Entitlements, seen by two people** (2:45). Switch to the analyst's browser profile: the research
+   site is there, Atlas is not, in search or from the agent. Back as the partner: the Atlas agent answers
+   with citations.
+6. **One vocabulary across data and documents** (3:30). The partner asks the portfolio data agent which
+   companies are behind plan on EBITDA; the answer uses the same glossary terms that tag the documents.
+7. **The coordination tax, removed** (4:15). In Claude Code: "Onboard a new data source to Private
+   Equity". One model change, compiled, confirmed in the conformance report, the git diff as the audit trail.
+8. **Close** (4:45). Every object traces to its domain, terms and access. Switch the compiler off and
+   everything still works; only automation and drift checks stop.
+
+Slow steps (agent answers take 20-60 seconds) are started early and talked over.
 
 ## Definition of done
 
