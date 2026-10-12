@@ -1,0 +1,9 @@
+/// Contoso Capital portfolio value management. Every measure is bound to one term in config/glossary.yaml.
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+
+ref table companies
+ref table monthly_financials
+ref table value_creation_initiatives
+

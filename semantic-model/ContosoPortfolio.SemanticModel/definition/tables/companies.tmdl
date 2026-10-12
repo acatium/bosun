@@ -1,0 +1,41 @@
+/// Portfolio companies held by Contoso Capital funds.
+table companies
+
+	column company_id
+		dataType: string
+		sourceColumn: company_id
+		summarizeBy: none
+
+	column company_name
+		dataType: string
+		sourceColumn: company_name
+		summarizeBy: none
+
+	column sector
+		dataType: string
+		sourceColumn: sector
+		summarizeBy: none
+
+	column fund
+		dataType: string
+		sourceColumn: fund
+		summarizeBy: none
+
+	column acquisition_date
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		sourceColumn: acquisition_date
+		summarizeBy: none
+
+	column deal_lead
+		dataType: string
+		sourceColumn: deal_lead
+		summarizeBy: none
+
+	partition companies = entity
+		mode: directLake
+		source
+			entityName: companies
+			schemaName: dbo
+			expressionSource: DatabaseQuery
+

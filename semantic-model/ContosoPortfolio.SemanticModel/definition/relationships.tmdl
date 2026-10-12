@@ -1,0 +1,8 @@
+relationship financials_company
+	fromColumn: monthly_financials.company_id
+	toColumn: companies.company_id
+
+relationship initiatives_company
+	fromColumn: value_creation_initiatives.company_id
+	toColumn: companies.company_id
+

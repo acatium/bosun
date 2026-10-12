@@ -1,0 +1,50 @@
+/// Named levers in each company's value creation plan.
+table value_creation_initiatives
+
+	/// Glossary term "Value creation initiative". Target annual EBITDA uplift, USD thousands.
+	measure 'Initiative Target Uplift' = SUM ( value_creation_initiatives[target_annual_ebitda_uplift_usd_k] )
+		formatString: #,0
+
+	column company_id
+		dataType: string
+		sourceColumn: company_id
+		summarizeBy: none
+
+	column initiative
+		dataType: string
+		sourceColumn: initiative
+		summarizeBy: none
+
+	column lever
+		dataType: string
+		sourceColumn: lever
+		summarizeBy: none
+
+	column target_annual_ebitda_uplift_usd_k
+		dataType: int64
+		sourceColumn: target_annual_ebitda_uplift_usd_k
+		summarizeBy: sum
+
+	column owner_role
+		dataType: string
+		sourceColumn: owner_role
+		summarizeBy: none
+
+	column status
+		dataType: string
+		sourceColumn: status
+		summarizeBy: none
+
+	column due_date
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		sourceColumn: due_date
+		summarizeBy: none
+
+	partition value_creation_initiatives = entity
+		mode: directLake
+		source
+			entityName: value_creation_initiatives
+			schemaName: dbo
+			expressionSource: DatabaseQuery
+

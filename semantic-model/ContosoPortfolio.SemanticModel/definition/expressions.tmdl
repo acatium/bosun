@@ -1,0 +1,8 @@
+/// Direct Lake connection to the portfolio lakehouse SQL endpoint.
+/// {{SQL_ENDPOINT_HOST}} and {{SQL_ENDPOINT_ID}} are substituted at deploy time (see semantic-model/README.md).
+expression DatabaseQuery =
+		let
+			database = Sql.Database("{{SQL_ENDPOINT_HOST}}", "{{SQL_ENDPOINT_ID}}")
+		in
+			database
+
