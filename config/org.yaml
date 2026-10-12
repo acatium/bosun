@@ -1,0 +1,35 @@
+# Contoso Capital: a fictional alternative investment firm used to exercise the platform.
+# Domains and ownership are primitives. They live here as data, are checked in CI,
+# and are applied to Entra ID by the pipeline rather than maintained by hand.
+
+firm:
+  name: Contoso Capital
+  prefix: contoso
+
+domains:
+  - key: private-equity
+    name: Private Equity
+    owner: pe-partner
+    description: Sourcing, due diligence and portfolio ownership of private companies.
+  - key: finance-operations
+    name: Finance & Operations
+    owner: ops-lead
+    description: Fund accounting, reporting and the firm's authoritative figures.
+  - key: technology
+    name: Technology
+    owner: platform-owner
+    description: The AI platform, identity and infrastructure.
+
+personas:
+  - key: pe-partner
+    name: Private Equity Partner
+    domain: private-equity
+  - key: pe-associate
+    name: Private Equity Associate
+    domain: private-equity
+  - key: ops-lead
+    name: Finance & Operations Lead
+    domain: finance-operations
+  - key: platform-owner
+    name: Platform Owner
+    domain: technology

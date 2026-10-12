@@ -1,0 +1,7 @@
+# Never commit credentials or local state
+.env
+*.pem
+*.pfx
+*.key
+local/
+__pycache__/
