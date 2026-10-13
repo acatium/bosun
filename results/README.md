@@ -1,5 +1,4 @@
-# Validation results
+# Results
 
-Each test in the main README writes its evidence here: the command or workflow run that executed it,
-the observed result, and pass or fail. Results are captured from real runs against the Contoso Capital
-environment before it is torn down.
+Evidence from runs against the Contoso Capital environment, by date. Each file states the command or
+workflow run, who ran it, and the observed output. Addresses are redacted to `<persona>@<tenant>`.

@@ -74,8 +74,13 @@ def agent_instructions(model: Model) -> str:
             "For every figure, state the term and its exact as-of date. Unless the question names a period, report "
             "monthly terms for the latest month in the data only, never summed across months, and report any other term "
             "as of the latest date its data covers. If a question uses a term that is not in "
-            "this list, say it is not a defined term and name the closest defined terms instead of guessing. "
+            "this list, say it is not a defined term and name the closest defined terms, without figures, instead of guessing. "
             "Amounts are in USD thousands unless the term says otherwise.")
+
+
+def datasource_instructions(model: Model) -> str:
+    measures = ", ".join(t["measure"] for t in model.terms.values() if t.get("measure"))
+    return f"Answer with the model's measures ({measures}). Filter companies by companies[company_name]."
 
 
 def measures_in(parts: dict[str, str]) -> set[str]:
@@ -133,7 +138,8 @@ def plan(model: Model) -> list[dict]:
                 if ds["table"] not in selected:
                     steps.append({"op": "agent-add-table", "table": ds["table"], "path": path})
     current = json.loads(agent.get("Files/Config/published/stage_config.json", "{}")).get("aiInstructions", "")
-    if current != agent_instructions(model):
+    sources = [json.loads(text).get("dataSourceInstructions") for path, text in agent.items() if path.endswith("datasource.json")]
+    if current != agent_instructions(model) or any(s != datasource_instructions(model) for s in sources):
         steps.append({"op": "update-agent-vocabulary", "terms": len([t for t in model.terms.values() if t.get("measure")])})
     return steps
 
@@ -211,6 +217,10 @@ def apply(model: Model, steps: list[dict]) -> list[str]:
                                                       "type": "semantic_model.table", "description": None, "children": []})
             parts[step["path"]] = json.dumps(source, indent=2)
             done.append(f"let the data agent see table {step['table']} ({step['path'].split('/')[2]})")
+        for path in [p for p in parts if p.endswith("datasource.json")]:
+            source = json.loads(parts[path])
+            source["dataSourceInstructions"] = datasource_instructions(model)
+            parts[path] = json.dumps(source, indent=2)
         for stage in ("draft", "published"):
             key = f"Files/Config/{stage}/stage_config.json"
             config = json.loads(parts.get(key, "{}"))

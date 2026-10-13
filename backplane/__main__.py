@@ -52,12 +52,15 @@ def main() -> int:
 
     pending = 0
     for name, target in TARGETS:
-        steps = [s for s in target.plan(model) if s["op"] != "drift"]
-        drift = [s for s in target.plan(model) if s["op"] == "drift"]
+        planned = target.plan(model)
+        steps = [s for s in planned if s["op"] != "drift"]
+        drift = [s for s in planned if s["op"] == "drift"]
         print(f"\n{name}: {len(steps)} change(s)")
         for step in steps:
             detail = (step.get("term") or step.get("table") or step.get("set") or step.get("group")
                       or step.get("item_name") or step.get("tag") or step.get("name") or step.get("domain") or "")
+            if "/draft/" in step.get("path", "") or "/published/" in step.get("path", ""):
+                detail += " (draft config)" if "/draft/" in step["path"] else " (published config)"
             print(f"  {step['op']:<14} {detail}")
         for step in drift:
             print(f"  drift          {step.get('term') or step.get('group')}: {step['detail']} (not managed by the model; decide whether to add it or remove it)")
