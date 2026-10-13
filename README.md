@@ -1,89 +1,74 @@
 # Bosun
 
-A governed AI foundation on the Microsoft stack, demonstrated on **Contoso Capital**, a fictional
-alternative investment firm. (Contoso and its portfolio companies are Microsoft's standard fictional
-names. Everything else here is built from scratch.)
+**One model of the firm's primitives, compiled into Microsoft's native controls and called through MCP from
+where people already work, so governance happens automatically instead of by coordination.**
 
-Bosun's claim is that people can use AI agents freely when a few governed primitives sit underneath them
-and the rules are enforced by the platform, not by prompts. It is built almost entirely from native
-Microsoft components; the one custom piece is a small, auditable gateway.
+Demonstrated on **Contoso Capital**, a fictional private markets firm. (Contoso, Fabrikam, Northwind,
+Tailspin, Adventure Works, Wide World Importers and Woodgrove Bank are Microsoft's standard fictional names.)
+Built with Claude Code; every commit is co-authored.
 
-## The model
+## The idea
 
-**Four primitives**, each with an owner:
+In a large firm, identity, groups, data, catalog, collaboration and records are each owned and configured by
+a different team, so any change is a chain of tickets. Bosun holds the primitives as one small model and
+compiles it into the platform:
 
-| Primitive | Native component here | Source of truth |
+| Primitive | In the model | Compiled into |
 |---|---|---|
-| Identity | Entra ID users and security groups | Entra (HR-driven in production) |
-| Org domains | Fabric Domains (Private Equity, Finance & Operations, Technology) | [`config/profiles/contoso.yaml`](config/profiles/contoso.yaml) |
-| Closed business glossary | Each term bound to exactly one semantic model measure | [`config/glossary.yaml`](config/glossary.yaml) |
-| Ontology | Tables and relationships in the semantic model; Fabric IQ ontology (preview) is the native next step | [`semantic-model/`](semantic-model/) |
+| Identity | Roles defined by directory attributes | Entra dynamic groups (membership follows department and title) |
+| Group membership | Domains | Entra domain groups, Fabric domains |
+| Business terms | A closed glossary with owners and calculations | SharePoint term store, semantic model measures, the data agent's vocabulary |
+| Entitlements | Rules over roles, stores and tags | Fabric workspace roles; the deal-room tool's checks; sensitivity labels (one-time admin step) |
+| Observability | Every compiled object traces to the model | Conformance report (drift both ways), receipts, Microsoft 365 audit log |
 
-**Two agent layers**:
+Users never tag anything and never raise a ticket. Agents propose; deterministic code applies; a person
+approves. See [`docs/decisions.md`](docs/decisions.md) for every choice, what was rejected and why, and the
+six questions (identity, access, revocation, logging, failure, cost) for each component.
 
-- **Store agents are domain-scoped and keyed.** Each store (here, a Fabric workspace) has one agent. The
-  agent reads data through the store's own identity (the workspace identity), not the caller's, so its
-  reach is one store and nothing else. Only people on the store's access list can invoke it.
-- **The orchestrator is user-scoped and holds no keys.** Claude Code here, Microsoft 365 Copilot in a
-  licensed tenant. It acts as the person using it and can only reach stores that person can already reach.
+## What it does
 
-**One deterministic rule on top**: every figure in an answer must name a glossary term and an as-of month,
-or the answer is blocked with the reason. This is the only custom code ([`gateway/`](gateway/)), and it is
-small enough to read in a few minutes.
+- **A partner opens a deal room by asking their agent.** The tool's input schema comes from the model, which
+  marks sensitivity as required and never defaulted, so the agent asks for it. The tool checks the model's
+  rules, then, as the partner, creates a private, labelled Microsoft 365 group and site, sets the library's
+  default tags, and files the CIM from the partner's inbox. A banker who is a guest is refused under the
+  rule `confidential-no-guests`.
+- **Portfolio questions are answered in the glossary's terms** by a Fabric data agent over a Direct Lake
+  semantic model, reading through the workspace's own identity.
+- **The glossary owner defines a new term** (e.g. Gross IRR) and one model change is compiled into a
+  loaded dataset, a measure, the term store and the agent's vocabulary.
 
-```
-Person ──► Orchestrator (Claude Code, runs as the person, no keys)
-              │  MCP
-              ▼
-           bosun-gateway (local, no keys: forwards the person's token, checks every answer, logs every call)
-              │  MCP, person's Entra token
-              ▼
-           Store agent (Fabric data agent)  ◄── invocation gate: store access group
-              │  store key: workspace identity
-              ▼
-           Semantic model (glossary-bound measures) ──► Lakehouse (OneLake)
-```
+## Evidence
 
-## What was proved
-
-Evidence from real runs is in [`results/`](results/). Each claim has a pass/fail test.
-
-| # | Claim | Result |
+| Claim | Evidence | Status |
 |---|---|---|
-| 1 | A person on the store's access list can ask its agent and get a governed answer | Pass |
-| 2 | A person not on the list is refused by the platform, with no Bosun code involved | See results |
-| 3 | The orchestrator reaches stores only as the person using it | Pass |
-| 4 | Answers match the authoritative calculation (golden questions vs DAX) | Pass, 3 of 3 |
-| 5 | An undefined term (IRR) is refused, not estimated | Pass |
-| 6 | A figure without a glossary term or as-of month is blocked, with the reason | Pass, on real agent output |
-| 7 | Every orchestrator call is logged with caller, store, question and verdict | Pass |
+| The agent asks for a sensitivity the person omitted, with no instruction from the server | [`results/2026-10-13/model-talks-back.md`](results/2026-10-13/model-talks-back.md) | Shown (dry run) |
+| Guests are refused on Confidential rooms, including a guest addressed by internal UPN; unknown people and missing labels are refused | [`results/2026-10-13/refusals.md`](results/2026-10-13/refusals.md); rules unit-tested in [`tests/`](tests/) | Shown |
+| A new term compiles end to end and matches an independent calculation | [`results/2026-10-13/irr-rehearsal.md`](results/2026-10-13/irr-rehearsal.md) | Shown |
+| Portfolio answers match DAX ground truth; an undefined term is refused (by the agent's generated instructions) | [`results/2026-10-12/store-agent-answers.md`](results/2026-10-12/store-agent-answers.md) | Shown |
+| Access to the portfolio store follows the store's access list | [`results/2026-10-12/access-and-guardrail.md`](results/2026-10-12/access-and-guardrail.md) | Shown (before the group model) |
+| A deal room created from the agent, with the CIM tagged by nobody | Rehearsed; the live run waits for the Confidential label to reach the partner | Pending |
+| Deal room activity corroborated by the Microsoft 365 audit log | To be captured after the live run | Pending |
 
-Not yet built: deal room provisioning and teardown, `Sites.Selected` keys for SharePoint stores, label
-inheritance and the Microsoft 365 Copilot surface. These are described as the next steps in the results.
+## Limits, stated
 
-## Repository layout
+- The MCP server runs on the partner's machine in this demo, so its checks guard the agent's path; the label
+  and group membership are the controls that also stop a person. Hosting the server removes that gap.
+- Access is per store. Tags carry domain and sensitivity for discovery and audit, but Microsoft does not
+  enforce on them, so the rules are compiled into groups and roles.
+- Sensitivity labels are created once by an admin and not checked by the conformance report.
+- Deal-room content is not readable by the platform owner, so its tags are attested at creation, not re-read.
+
+## Layout
 
 | Path | Purpose |
 |---|---|
-| `config/profiles/` | Firm profile: domains, personas and owners. `contoso.yaml` is the example |
-| `config/glossary.yaml` | The closed business glossary and each term's measure |
-| `config/stores.yaml` | Store registry: one entry per keyed store and its agent |
-| `data/portfolio/` | Sample operating data: four portfolio companies, actuals vs plan, value creation initiatives |
-| `semantic-model/` | The Direct Lake semantic model as TMDL (Microsoft's text format for models) |
-| `data-agent/` | The Fabric data agent definition |
-| `gateway/` | bosun-gateway, the one custom component |
-| `evals/` | Reviewed test questions with expected values |
-| `results/` | Captured evidence |
-| `tools/`, `.github/` | Repository hygiene checks run in CI |
-| `bootstrap/`, `infra/` | GitHub-to-Azure federation and pipeline foundation (not used in the 2026-10-12 run) |
+| `model/` | The LinkML schema and the Contoso model |
+| `backplane/` | Compiler (`python -m backplane validate|plan|apply|report`) and the MCP server |
+| `.claude/skills/backplane/` | How Claude Code operates the backplane |
+| `semantic-model/`, `data-agent/` | The portfolio store's semantic model (TMDL) and data agent definition |
+| `data/` | Fictional portfolio data, fund cash flows and the Project Atlas CIM |
+| `docs/` | Decisions, the demo change, research notes |
+| `results/` | Evidence from real runs |
+| `tests/`, `tools/`, `.github/` | Offline tests, content and repository checks, CI |
 
-## Replicating it
-
-See [`REPLICATE.md`](REPLICATE.md). Everything needed is in this repository; nothing depends on the
-original tenant. The run costs a few dollars if torn down the same day.
-
-## Environment notes
-
-- Microsoft 365 E3. Fabric on a paid F2 capacity (data agents do not run on trial capacity). Users need a
-  Power BI licence or trial to query a semantic model on capacities below F64.
-- All Azure resources live in one resource group and are deleted after validation.
+See [`REPLICATE.md`](REPLICATE.md) to rebuild it in another tenant.
