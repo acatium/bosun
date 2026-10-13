@@ -19,10 +19,19 @@ identifiers go in a gitignored `local/bosun.env`; nothing in tracked files names
 
 1. **People:** set `companyName` and `department` (and `jobTitle` for partners) on the demo users. A dynamic
    group on `companyName` assigns their licences.
-2. **Labels:** create three labels (Public, Internal, Confidential) with group and site settings, and publish
-   them only to the demo users. Confidential: private, no guests. Enable labels for groups
-   (`EnableMIPLabels`) and for SharePoint files (`Set-SPOTenant -EnableAIPIntegration $true`). Labels take
-   hours to reach users.
+2. **Labels:** in Windows PowerShell with the ExchangeOnlineManagement module, after `Connect-IPPSSession`:
+   ```powershell
+   foreach ($l in @(@('contoso-public','Contoso Public','Public',$true), @('contoso-internal','Contoso Internal','Private',$true), @('contoso-confidential','Contoso Confidential','Private',$false))) {
+     New-Label -Name $l[0] -DisplayName $l[1] -Tooltip $l[1] -ContentType 'File, Email, Site, UnifiedGroup'
+     Set-Label -Identity $l[0] -SiteAndGroupProtectionEnabled $true -SiteAndGroupProtectionPrivacy $l[2] -SiteAndGroupProtectionAllowAccessToGuestUsers $l[3] -SiteExternalSharingControlType ExistingExternalUserSharingOnly
+   }
+   New-LabelPolicy -Name contoso-labels -Labels contoso-public,contoso-internal,contoso-confidential -ExchangeLocation <demo users>
+   Execute-AzureAdLabelSync
+   ```
+   Guests are allowed on Public and Internal and refused on Confidential, matching the model's rule. Also
+   enable labels for groups (the Entra `Group.Unified` setting `EnableMIPLabels`) and for SharePoint files
+   (`Set-SPOTenant -EnableAIPIntegration $true`). Labels take hours to reach users; after that, put each
+   label's id in `local/bosun.env` as `BOSUN_LABEL_<SENSITIVITY>`.
 3. **App registration:** a public-client, delegated-only app (no secret) with the scopes listed in
    [`docs/decisions.md`](docs/decisions.md), admin consent, and "assignment required" with the demo users'
    group and the platform owner assigned. Sign in the CLI for Microsoft 365 through it as the platform owner.

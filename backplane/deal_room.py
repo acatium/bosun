@@ -132,7 +132,15 @@ def create(model: Model, request: DealRoomRequest) -> dict:
             labels = {l.get("labelId") for l in group.get("assignedLabels", [])}
             if label_id(sensitivity) and label_id(sensitivity) not in labels:
                 raise Refused(f"{request.name} already exists with a different sensitivity; it was not changed.")
-            steps.append({"step": "resume", "group_id": group["id"]})
+            current = {m["id"] for m in call("GET", f"{GRAPH}/groups/{group['id']}/members?$select=id").get("value", [])}
+            added = []
+            for member_id, email in zip(member_ids, request.members):
+                if member_id not in current:  # already checked against the rules above
+                    call("POST", f"{GRAPH}/groups/{group['id']}/members/$ref",
+                         {"@odata.id": f"{GRAPH}/directoryObjects/{member_id}"})
+                    added.append(email)
+            steps.append({"step": "resume", "group_id": group["id"], "members_added": added})
+            record["resumed"] = True
         else:
             group_body = {
                 "displayName": request.name, "mailNickname": nickname,
@@ -219,9 +227,9 @@ def create(model: Model, request: DealRoomRequest) -> dict:
                                   "from_email": message["subject"], "received": message["receivedDateTime"],
                                   "tags_verified": {k: fields.get(f"Contoso{k}") for k in ("Domain", "Deal", "Sensitivity")}})
 
-        record["result"] = "created"
+        record["result"] = "resumed" if record.get("resumed") else "created"
         record["site"] = site["webUrl"]
-        return {"result": "created", "deal_room": request.name, "site": site["webUrl"], "steps": steps}
+        return {"result": record["result"], "deal_room": request.name, "site": site["webUrl"], "steps": steps}
     except Refused as refusal:
         record["result"] = "refused"
         record["reason"] = str(refusal)

@@ -6,6 +6,13 @@ MCP server running as Dana · **Mode:** dry run (`BOSUN_DRY_RUN=1`): rules and m
 The `create_deal_room` tool's input schema is generated from `DealRoomRequest` in `model/bosun.yaml`, where
 `sensitivity` is required, has no default and is limited to Public, Internal or Confidential.
 
+## Repeated runs
+
+The request without a sensitivity was run four times with no server instruction about sensitivity (the
+run below plus three repeats): the agent asked for the sensitivity in **4 of 4** runs and never called the
+tool with a guessed value. Observed behaviour of the model on the day, not a guarantee; the tool still
+cannot be called without a value.
+
 ## Turn 1 again, without any server instruction about sensitivity
 
 After the audit, the MCP server's instruction "never guess a sensitivity" was removed, so the only guidance

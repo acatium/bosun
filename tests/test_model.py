@@ -68,5 +68,17 @@ class DealRoomRules(unittest.TestCase):
         self.assertNotIn("pe-partner", deal_room.caller_roles(self.model, analyst))
 
 
+
+class CalculationDrift(unittest.TestCase):
+    def test_whitespace_does_not_count_as_drift(self):
+        from backplane.semantic import normalise
+        self.assertEqual(normalise("XIRR ( t, t[a],  t[d] )"), normalise("XIRR(t, t[a], t[d])"))
+
+    def test_changed_expression_counts_as_drift(self):
+        from backplane.semantic import measure_expressions, normalise
+        parts = {"definition/tables/x.tmdl": "table x\n\tmeasure 'Gross IRR' = XIRR(x, x[b], x[d])\n"}
+        self.assertNotEqual(normalise(measure_expressions(parts)["Gross IRR"]), normalise("XIRR(x, x[a], x[d])"))
+
+
 if __name__ == "__main__":
     unittest.main()

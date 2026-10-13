@@ -5,7 +5,7 @@ where people already work, so governance happens automatically instead of by coo
 
 Demonstrated on **Contoso Capital**, a fictional private markets firm. (Contoso, Fabrikam, Northwind,
 Tailspin, Adventure Works, Wide World Importers and Woodgrove Bank are Microsoft's standard fictional names.)
-Built with Claude Code; every commit is co-authored.
+Built with Claude Code; commits from the redesign onward carry a Claude co-author line.
 
 ## The idea
 
@@ -44,8 +44,8 @@ six questions (identity, access, revocation, logging, failure, cost) for each co
 | The agent asks for a sensitivity the person omitted, with no instruction from the server | [`results/2026-10-13/model-talks-back.md`](results/2026-10-13/model-talks-back.md) | Shown (dry run) |
 | Guests are refused on Confidential rooms, including a guest addressed by internal UPN; unknown people and missing labels are refused | [`results/2026-10-13/refusals.md`](results/2026-10-13/refusals.md); rules unit-tested in [`tests/`](tests/) | Shown |
 | A new term compiles end to end and matches an independent calculation | [`results/2026-10-13/irr-rehearsal.md`](results/2026-10-13/irr-rehearsal.md) | Shown |
-| Portfolio answers match DAX ground truth; an undefined term is refused (by the agent's generated instructions) | [`results/2026-10-12/store-agent-answers.md`](results/2026-10-12/store-agent-answers.md) | Shown |
-| Access to the portfolio store follows the store's access list | [`results/2026-10-12/access-and-guardrail.md`](results/2026-10-12/access-and-guardrail.md) | Shown (before the group model) |
+| Portfolio answers match DAX ground truth; an undefined term is refused (by the agent's generated instructions) | [`results/2026-10-13/golden-questions.md`](results/2026-10-13/golden-questions.md) | Shown |
+| Access to the portfolio store follows the model's rules (compiled groups); an outsider is refused | [`results/2026-10-13/golden-questions.md`](results/2026-10-13/golden-questions.md) (partner); [`results/2026-10-12/access-and-guardrail.md`](results/2026-10-12/access-and-guardrail.md) (outsider, before the compiler) | Shown |
 | A deal room created from the agent, with the CIM tagged by nobody | Rehearsed; the live run waits for the Confidential label to reach the partner | Pending |
 | Deal room activity corroborated by the Microsoft 365 audit log | To be captured after the live run | Pending |
 

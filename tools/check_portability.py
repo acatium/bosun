@@ -13,7 +13,7 @@ GUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 WELL_KNOWN_GUIDS = {
     "00000003-0000-0000-c000-000000000000",  # Microsoft Graph's public application ID
 }
-# Files that legitimately name the current owner. Both are listed in PORTING.md as files to update.
+# Files that legitimately name the current owner; a firm adopting this repository updates both.
 EXEMPT = {"LICENSE", ".github/CODEOWNERS"}
 
 values = {

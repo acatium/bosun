@@ -62,16 +62,20 @@ def _graph(method: str, url: str, body: dict | None = None) -> dict:
     return result if isinstance(result, dict) else {}
 
 
-def _update_description(set_name: str, term_name: str, description: str) -> None:
+def _update_description(group_name: str, set_name: str, term_name: str, description: str) -> None:
     root = _graph("get", "https://graph.microsoft.com/v1.0/sites/root?$select=id")["id"]
     store = f"https://graph.microsoft.com/v1.0/sites/{root}/termStore"
-    for term_set in _graph("get", f"{store}/sets").get("value", []):
-        if term_set["localizedNames"][0]["name"] != set_name:
-            continue
-        for term in _graph("get", f"{store}/sets/{term_set['id']}/terms").get("value", []):
-            if term["labels"][0]["name"] == stored_name(term_name):
-                _graph("patch", f"{store}/sets/{term_set['id']}/terms/{term['id']}",
-                       {"descriptions": [{"description": description, "languageTag": "en-US"}]})
+    groups = [g for g in _graph("get", f"{store}/groups").get("value", []) if g["displayName"] == group_name]
+    for group in groups:
+        for term_set in _graph("get", f"{store}/groups/{group['id']}/sets").get("value", []):
+            if term_set["localizedNames"][0]["name"] != set_name:
+                continue
+            for term in _graph("get", f"{store}/sets/{term_set['id']}/terms").get("value", []):
+                if term["labels"][0]["name"] == stored_name(term_name):
+                    _graph("patch", f"{store}/sets/{term_set['id']}/terms/{term['id']}",
+                           {"descriptions": [{"description": description, "languageTag": "en-US"}]})
+                    return
+    raise RuntimeError(f"Term '{term_name}' not found in {group_name} / {set_name}")
 
 
 def apply(steps: list[dict]) -> list[str]:
@@ -83,7 +87,7 @@ def apply(steps: list[dict]) -> list[str]:
         elif step["op"] == "create-set":
             m365("spo", "term", "set", "add", "--name", step["set"], "--termGroupName", step["group"])
         elif step["op"] == "update-term":
-            _update_description(step["set"], step["term"], step["description"])
+            _update_description(step["group"], step["set"], step["term"], step["description"])
         elif step["op"] == "create-term":
             m365("spo", "term", "add", "--name", step["term"], "--termSetName", step["set"],
                  "--termGroupName", step["group"], "--description", step["description"])

@@ -81,7 +81,7 @@ unless the owner agrees otherwise.
      no instruction about it; the schema cannot force a question, only a value.) The partner answers
      "Confidential".
    - **The backplane builds it.** The MCP tool checks the model's rules and, as the partner, creates the
-     team, applies the site template and the domain, deal and sensitivity tags, adds the members and files
+     labelled, private group and site, sets the library's domain, deal and sensitivity defaults, adds the members and files
      the CIM. Open the CIM's properties: tagged, by nobody. Show the receipt and the model behind it.
    - **A deterministic no.** The partner asks to add the banker, who is a guest in the directory. The tool
      refuses, citing the model's rule that Confidential rooms take no guests. Say it precisely: the tool's
@@ -148,8 +148,9 @@ the same tool would also create the Team on that group; governance is unchanged.
 
 **Backplane MCP server (runtime)**
 - [ ] `create_deal_room` tool: input schema generated from the model; rule check against the model;
-      runs as the calling user; creates the team with its label, applies the site template and library
-      defaults, adds members, files the CIM, writes a receipt
+      runs as the calling user; creates the group and site with its label, sets the library defaults and
+      default label, adds members, files the CIM, writes a receipt; fails closed without the label; resumes
+      only the caller's own room at the same sensitivity
 - [ ] Rule refusal: adding a guest to a Confidential room is refused with the rule's name
 - [ ] Verified from the Claude desktop app as the partner (option B)
 - [ ] Pay-as-you-go authoring check for Copilot Studio (about 10 minutes, $0). If it passes: the same
@@ -167,8 +168,8 @@ the same tool would also create the Team on that group; governance is unchanged.
 - [ ] Observability: receipts, conformance report, model history in git, Microsoft 365 audit log entries
 
 **The live moment**
-- [ ] "Finance defines IRR": one model change (term, owner, source, domain) compiled into a lakehouse
-      table with domain, tags and access, an IRR measure bound to the term, the term store, and the data
+- [ ] "Finance defines IRR": one model change (term, owner, source, domain) compiled into a dataset
+      loaded into the governed portfolio store (which carries domain, tags and access), an IRR measure bound to the term, the term store, and the data
       agent's vocabulary; the partner's re-asked question is answered under the agreed definition
 - [ ] The data agent's term list is generated from the model, so new terms reach it automatically
 

@@ -86,6 +86,19 @@ def measures_in(parts: dict[str, str]) -> set[str]:
     return found
 
 
+def normalise(expression: str) -> str:
+    return re.sub(r"\s+", "", expression)
+
+
+def measure_expressions(parts: dict[str, str]) -> dict[str, str]:
+    """Single-line measure expressions by name (multi-line measures are compared as their first line)."""
+    found = {}
+    for text in parts.values():
+        for match in re.finditer(r"^\s*measure\s+('([^']+)'|([^\s=]+))\s*=\s*(.*)$", text, re.MULTILINE):
+            found[match.group(2) or match.group(3)] = match.group(4)
+    return found
+
+
 def plan(model: Model) -> list[dict]:
     steps = []
     loaded = lakehouse_tables()
@@ -98,7 +111,12 @@ def plan(model: Model) -> list[dict]:
         if ds["table"] not in tables:
             steps.append({"op": "add-table", "store": ds["id"], "table": ds["table"]})
     present = measures_in(parts)
+    expressions = measure_expressions(parts)
     for term_id, term in model.terms.items():
+        if term.get("measure") in present and term.get("calculation"):
+            if normalise(expressions.get(term["measure"], "")) != normalise(term["calculation"]):
+                steps.append({"op": "drift", "term": term["name"],
+                              "detail": f"measure '{term['measure']}' differs from the model's calculation"})
         if term.get("measure") and term["measure"] not in present:
             if term.get("calculation") and term.get("source"):
                 steps.append({"op": "add-measure", "term": term["name"], "measure": term["measure"],
