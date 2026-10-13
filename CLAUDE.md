@@ -240,10 +240,27 @@ An audit trail nobody can query. Personal email, tenant IDs or live public endpo
 public repository. Claims of "production-ready", tests that do not test, or results without evidence.
 Resources left running. An abstraction layer bigger than the problem it solves.
 
-## Current state
+## Current state (end of 2026-10-13 session)
 
-A first build (2026-10-12) proved the portfolio store in this tenant: sample data, lakehouse, TMDL
-semantic model with glossary-bound measures, a data agent keyed by the workspace identity, and access
-proofs (`results/2026-10-12/`). Its F2 capacity is paused. It is the starting point for the portfolio
-store. `gateway/`, `bootstrap/` and `infra/` predate the current design; keep, rework or remove them as
-part of the rebuild, and record which.
+Built and verified: the model and compiler (groups, Fabric, term store, data path) converge to zero changes;
+the deal-room tool fails closed and refuses guests, unknown people and missing labels; the agent asks for
+the sensitivity (4 of 4 runs); the IRR change compiles end to end and was reset for the live demo; golden
+questions pass as the partner on the current configuration. Evidence is in `results/2026-10-13/`. Both
+audit rounds are addressed. The F2 capacity is paused.
+
+Before the demo, in order:
+1. Owner: run the label edit (allow guests on Internal and Public) in Windows PowerShell, then update
+   `docs/decisions.md` section 5.
+2. Check the Confidential label has reached the partner: a real request for "Project Dryrun" in Claude
+   desktop should create the room (also tests that SharePoint `AllSites.Manage` is enough for the runtime
+   app; if not, widen it and record why). Re-run the guest request against that room through the agent to
+   rehearse the "add the banker" beat. Then delete the room, purge its site from the SharePoint recycle
+   bin, and purge any remaining `deal-project-rehearsal*` site.
+3. Resume the capacity (`bash local/capacity.sh resume`); each persona signs in to Fabric once.
+4. Live: Project Atlas, then the IRR change (`docs/demo/gross-irr-change.yaml`; reset with
+   `local/admin/reset_irr.py`).
+5. After the live run: capture a Microsoft 365 audit log query for the Atlas group and file events in
+   `results/`, update the README's pending rows.
+6. Owner: set the `DENYLIST` secret (company name stays off it) and the `TENANT_DOMAIN` and
+   `SHAREPOINT_HOST` repository variables, so CI can pass; then open the pull request and merge when green.
+7. Decide whether to run the Copilot Studio pay-as-you-go check (option A) or keep it described.

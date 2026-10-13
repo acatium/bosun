@@ -32,9 +32,11 @@ identifiers go in a gitignored `local/bosun.env`; nothing in tracked files names
    enable labels for groups (the Entra `Group.Unified` setting `EnableMIPLabels`) and for SharePoint files
    (`Set-SPOTenant -EnableAIPIntegration $true`). Labels take hours to reach users; after that, put each
    label's id in `local/bosun.env` as `BOSUN_LABEL_<SENSITIVITY>`.
-3. **App registration:** a public-client, delegated-only app (no secret) with the scopes listed in
-   [`docs/decisions.md`](docs/decisions.md), admin consent, and "assignment required" with the demo users'
-   group and the platform owner assigned. Sign in the CLI for Microsoft 365 through it as the platform owner.
+3. **App registrations:** two public-client, delegated-only apps with no secrets, admin consent and
+   "assignment required", with the scopes listed in [`docs/decisions.md`](docs/decisions.md): a change-time
+   app assigned only to the platform owner (sign the CLI for Microsoft 365 in through it for the compiler),
+   and a runtime app assigned only to the demo users' group (sign in through it as the partner for the
+   deal-room tool).
 4. **Portfolio store:** an F2 capacity, a workspace, a lakehouse loaded from `data/portfolio/`, the semantic
    model from `semantic-model/` (substitute the SQL endpoint host and id), the workspace identity bound to the
    model as its connection, and the data agent from `data-agent/` (substitute workspace and model ids).
