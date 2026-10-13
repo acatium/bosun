@@ -72,8 +72,8 @@ def agent_instructions(model: Model) -> str:
             "semantic model. Never compute figures yourself from raw columns.\n"
             "These are the only defined business terms:\n" + terms + "\n"
             "For every figure, state the term and its exact as-of date. Unless the question names a period, report "
-            "monthly terms for the latest month in the data only, never summed across months, and report terms "
-            "calculated from cash flows as of the latest valuation date in the data. If a question uses a term that is not in "
+            "monthly terms for the latest month in the data only, never summed across months, and report any other term "
+            "as of the latest date its data covers. If a question uses a term that is not in "
             "this list, say it is not a defined term and name the closest defined terms instead of guessing. "
             "Amounts are in USD thousands unless the term says otherwise.")
 
@@ -103,7 +103,7 @@ def plan(model: Model) -> list[dict]:
             if term.get("calculation") and term.get("source"):
                 steps.append({"op": "add-measure", "term": term["name"], "measure": term["measure"],
                               "table": model.stores[term["source"]]["table"], "calculation": term["calculation"],
-                              "definition": term["definition"]})
+                              "definition": term["definition"], "format": term.get("format_string") or "#,0.00"})
             else:
                 steps.append({"op": "drift", "term": term["name"],
                               "detail": f"measure '{term['measure']}' is missing and the term has no calculation"})
@@ -166,7 +166,7 @@ def apply(model: Model, steps: list[dict]) -> list[str]:
             path = f"definition/tables/{step['table']}.tmdl"
             text = parts[path]
             measure = (f"\t/// {step['definition']}\n\tmeasure '{step['measure']}' = {step['calculation']}\n"
-                       f"\t\tformatString: 0.0%\n\n")
+                       f"\t\tformatString: {step['format']}\n\n")
             header_end = text.index("\n\n", text.index(f"table {step['table']}")) + 2
             parts[path] = text[:header_end] + measure + text[header_end:]
             done.append(f"added measure '{step['measure']}' for term {step['term']}")

@@ -23,6 +23,7 @@ from .model import ROOT, Model
 GRAPH = "https://graph.microsoft.com/v1.0"
 RECEIPTS = pathlib.Path(os.environ.get("BOSUN_RECEIPTS", ROOT / "local" / "receipts" / "deal-rooms.jsonl"))
 STORE = "deal-room"
+DOCUMENT = re.compile(r"\.(pdf|docx?|xlsx?|pptx?)$", re.IGNORECASE)
 
 
 class Refused(Exception):
@@ -195,23 +196,27 @@ def create(model: Model, request: DealRoomRequest) -> dict:
         steps.append({"step": "library-default-label", "label": sensitivity})
 
         if request.file_from_inbox:
-            query = urllib.parse.quote(f'"{request.file_from_inbox}"')
-            found = call("GET", f"{GRAPH}/me/messages?$search={query}&$select=id,subject,hasAttachments&$top=5")
-            message = next((m for m in found.get("value", []) if m.get("hasAttachments")), None)
+            # The most recent email whose subject contains the text; only document attachments are filed.
+            found = call("GET", f"{GRAPH}/me/messages?$select=id,subject,hasAttachments,receivedDateTime"
+                                "&$orderby=receivedDateTime desc&$top=50")
+            wanted = request.file_from_inbox.lower()
+            message = next((m for m in found.get("value", [])
+                            if m.get("hasAttachments") and wanted in (m.get("subject") or "").lower()), None)
             if not message:
-                steps.append({"step": "file-cim", "skipped": "no matching email with attachments"})
+                steps.append({"step": "file-cim", "result": f"no email with attachments whose subject contains '{request.file_from_inbox}'"})
             else:
-                attachments = call("GET", f"{GRAPH}/me/messages/{message['id']}/attachments")
-                for attachment in attachments.get("value", []):
-                    if attachment.get("@odata.type") != "#microsoft.graph.fileAttachment":
+                attachments = call("GET", f"{GRAPH}/me/messages/{message['id']}/attachments?$select=id,name,contentType")
+                for meta in attachments.get("value", []):
+                    if meta.get("@odata.type") != "#microsoft.graph.fileAttachment" or not DOCUMENT.search(meta["name"]):
                         continue
+                    attachment = call("GET", f"{GRAPH}/me/messages/{message['id']}/attachments/{meta['id']}")
                     content = base64.b64decode(attachment["contentBytes"])
                     path = urllib.parse.quote(attachment["name"])
                     item = call("PUT", f"{GRAPH}/drives/{drive['id']}/root:/{path}:/content", raw=content)
                     fields = call("GET", f"{GRAPH}/drives/{drive['id']}/items/{item['id']}/listItem/fields"
                                          "?$select=FileLeafRef,ContosoDomain,ContosoDeal,ContosoSensitivity")
                     steps.append({"step": "file-cim", "file": attachment["name"], "item_id": item.get("id"),
-                                  "from_email": message["subject"],
+                                  "from_email": message["subject"], "received": message["receivedDateTime"],
                                   "tags_verified": {k: fields.get(f"Contoso{k}") for k in ("Domain", "Deal", "Sensitivity")}})
 
         record["result"] = "created"

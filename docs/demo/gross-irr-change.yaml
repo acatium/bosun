@@ -1,6 +1,6 @@
 # The "Finance defines IRR" change, for rehearsal. In the demo, Claude Code writes this into model/contoso.yaml
 # through the /backplane Skill, from the definition the glossary owner agreed.
 terms:
-  - {id: gross-irr, name: Gross IRR, domain: finance-operations, owner: ops-lead, measure: Gross IRR, source: fund-cash-flows, calculation: "XIRR(fund_cash_flows, fund_cash_flows[amount_usd_m], fund_cash_flows[flow_date])", definition: "Gross internal rate of return from the fund administrator's cash flows, using the latest NAV as the closing value, as of quarter end."}
+  - {id: gross-irr, name: Gross IRR, domain: finance-operations, owner: ops-lead, measure: Gross IRR, source: fund-cash-flows, calculation: "XIRR(fund_cash_flows, fund_cash_flows[amount_usd_m], fund_cash_flows[flow_date])", format_string: "0.0%", definition: "Gross internal rate of return from the fund administrator's cash flows, using the latest NAV as the closing value, as of quarter end."}
 stores:
   - {id: fund-cash-flows, name: Fund cash flows, kind: Dataset, domain: finance-operations, sensitivity: Internal, within: portfolio, file: data/portfolio/fund_cash_flows.csv, table: fund_cash_flows}

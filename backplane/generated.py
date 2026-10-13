@@ -245,6 +245,7 @@ class Term(ConfiguredBaseModel):
     measure: Optional[str] = Field(default=None, description="""The semantic model measure that is the authoritative calculation.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Term']} })
     source: Optional[str] = Field(default=None, description="""The store whose data the measure is calculated from, if not the default.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Term']} })
     calculation: Optional[str] = Field(default=None, description="""The authoritative calculation in the semantic model's language (DAX). The compiler adds the measure if it is missing.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Term']} })
+    format_string: Optional[str] = Field(default=None, description="""How the measure is displayed, e.g. 0.0% or #,0. Defaults to #,0.00.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Term']} })
 
     @field_validator('id')
     def pattern_id(cls, v):
@@ -269,7 +270,7 @@ class Store(ConfiguredBaseModel):
     id: str = Field(default=..., json_schema_extra = { "linkml_meta": {'domain_of': ['Domain', 'Role', 'Term', 'Store', 'Rule']} })
     name: str = Field(default=..., json_schema_extra = { "linkml_meta": {'domain_of': ['Firm', 'Domain', 'Role', 'Term', 'Store', 'DealRoomRequest']} })
     kind: StoreKind = Field(default=..., json_schema_extra = { "linkml_meta": {'domain_of': ['Store']} })
-    domain: str = Field(default=..., json_schema_extra = { "linkml_meta": {'domain_of': ['Role', 'Term', 'Store']} })
+    domain: str = Field(default=..., description="""The domain accountable for this store's content. Access is decided per store by the rules, not by domain or tags.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Role', 'Term', 'Store']} })
     sensitivity: Optional[Sensitivity] = Field(default=None, description="""Fixed sensitivity. Deal rooms leave this empty and ask for it on each request.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Store', 'Rule', 'DealRoomRequest']} })
     within: Optional[str] = Field(default=None, description="""The store that contains this one, e.g. the workspace holding a dataset.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Store']} })
     file: Optional[str] = Field(default=None, description="""Repository path of the data loaded into a dataset.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Store']} })
@@ -328,7 +329,7 @@ class DealRoomRequest(ConfiguredBaseModel):
     name: str = Field(default=..., description="""The deal's code name, e.g. Project Atlas.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Firm', 'Domain', 'Role', 'Term', 'Store', 'DealRoomRequest']} })
     members: list[str] = Field(default=..., description="""Email addresses of the deal team.""", json_schema_extra = { "linkml_meta": {'domain_of': ['DealRoomRequest']} })
     sensitivity: Sensitivity = Field(default=..., description="""How confidential the deal is. Never defaulted.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Store', 'Rule', 'DealRoomRequest']} })
-    file_from_inbox: Optional[str] = Field(default=None, description="""Optional subject text of an email whose attachments are filed into the room.""", json_schema_extra = { "linkml_meta": {'domain_of': ['DealRoomRequest']} })
+    file_from_inbox: Optional[str] = Field(default=None, description="""Optional text in the subject of the email to file from. The most recent matching email is used, and only its document attachments are filed.""", json_schema_extra = { "linkml_meta": {'domain_of': ['DealRoomRequest']} })
 
 
 # Model rebuild

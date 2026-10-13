@@ -55,6 +55,7 @@ classes:
       measure: {description: "The semantic model measure that is the authoritative calculation."}
       source: {range: Store, description: "The store whose data the measure is calculated from, if not the default."}
       calculation: {description: "The authoritative calculation in the semantic model's language (DAX). The compiler adds the measure if it is missing."}
+      format_string: {description: "How the measure is displayed, e.g. 0.0% or #,0. Defaults to #,0.00."}
 
   Store:
     description: Somewhere data or documents live. Deal rooms are templates; each instance is created on request.
@@ -62,7 +63,7 @@ classes:
       id: {identifier: true, pattern: "^[a-z][a-z0-9-]*$"}
       name: {required: true}
       kind: {range: StoreKind, required: true}
-      domain: {range: Domain, required: true}
+      domain: {range: Domain, required: true, description: "The domain accountable for this store's content. Access is decided per store by the rules, not by domain or tags."}
       sensitivity: {range: Sensitivity, description: "Fixed sensitivity. Deal rooms leave this empty and ask for it on each request."}
       within: {range: Store, description: "The store that contains this one, e.g. the workspace holding a dataset."}
       file: {description: "Repository path of the data loaded into a dataset."}
@@ -89,7 +90,7 @@ classes:
       name: {required: true, description: "The deal's code name, e.g. Project Atlas."}
       members: {multivalued: true, required: true, description: "Email addresses of the deal team."}
       sensitivity: {range: Sensitivity, required: true, description: "How confidential the deal is. Never defaulted."}
-      file_from_inbox: {description: "Optional subject text of an email whose attachments are filed into the room."}
+      file_from_inbox: {description: "Optional text in the subject of the email to file from. The most recent matching email is used, and only its document attachments are filed."}
 
 enums:
   Sensitivity:
