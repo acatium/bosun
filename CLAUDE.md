@@ -61,45 +61,50 @@ Decisions already taken (rationale in `docs/decisions.md`):
 | Tenant | The existing tenant plus a Microsoft 365 E5 trial; the demo runs only from Contoso persona browser profiles | A new tenant (cleaner, but slower) |
 | Confidential vs public | Private teams with a sensitivity label vs a firm-wide research site; normal permission trimming | Restricted Content Discovery (hides from members too), Restricted SharePoint Search (retiring) |
 | Metric interchange | Apache Ossie named as the future emit target for term-to-measure bindings; not built | Building on a 0.2 draft with no access constructs |
-| AI over documents | SharePoint agent via Copilot Chat pay-as-you-go | Per-user Microsoft 365 Copilot licences |
+| AI over documents | Not demonstrated: permission-trimmed retrieval is Microsoft's promise, named not shown | A SharePoint agent demo (spend and time for no differentiation) |
 | AI over portfolio data | Fabric data agent over the governed semantic model | Copilot Studio connected agent (needs a Copilot licence) |
 
 ## The five-minute demo (this is the scope)
 
-Every beat starts from a business event, and names where the firm's own systems would plug in. Anything not
-needed for these beats is out of scope unless the owner agrees otherwise.
+**The line:** "One model of the firm's primitives, compiled into Microsoft's native controls and called
+through MCP from where people already work, so governance happens automatically instead of by coordination."
 
-1. **A CIM arrives for Project Atlas** (0:00). The partner has the banker's email open in Outlook and tells
-   their agent: "Set up a deal room for Project Atlas, add Priya and Sam, and file the CIM from my inbox."
-   *Plug-in: in practice the CIM arrives from a banker's virtual data room or the deal inbox.*
-2. **The model asks, the backplane builds** (0:30). The partner didn't say how confidential Atlas is; the
-   tool's schema (from the model) requires it, so the agent asks. The partner answers "Confidential". The
-   agent calls the backplane MCP tool, which checks the model's rules and, as the partner, creates the
-   team, applies the site template and the domain, deal and sensitivity tags, adds the members and files
-   the CIM. Open the CIM's properties: tagged, by nobody. Show the receipt and the model that drove it.
-   Nobody from IT or the platform team is involved.
-3. **Research and contextualisation** (1:45). The partner asks the Atlas agent for the CIM's key risks and
-   how the business compares with similar portfolio companies; it answers with citations. *Plug-in: this is
-   where licensed research, prior IC memos and sector theses join as further stores, each declared in the
-   model with its domain and tags, so the agent only ever sees what the asker can.*
-4. **A new joiner, and an information barrier** (2:30). Switch to the analyst, who joined another deal team
-   last week: their department was set and the right groups, Teams and sites followed. The research site is
-   there; Atlas is not, in search or from the agent. *Plug-in: the HR system sets the department.*
-5. **The month-end portfolio pack lands** (3:00). The partner asks the portfolio data agent which companies
-   are behind plan on EBITDA; the answer uses the same glossary terms that tag the documents. *Plug-in: the
-   firm's warehouse, semantic models or portfolio monitoring tool sit here; terms bind to whatever
-   calculation finance already treats as authoritative.*
-6. **The firm licenses a new data source** (4:00). The platform owner, in Claude Code: "Onboard a new data source to Private
-   Equity". One model change, compiled, confirmed in the conformance report, the git diff as the audit
-   trail. Today that is a ticket to each team that owns a piece of it.
-7. **Close** (4:45). Every object traces to its domain, terms and access. Switch the backplane off and
-   everything still works as plain Microsoft 365; only the automation and drift checks stop.
+Every beat starts from a business event. Test for anything else: could the audience see it in a Microsoft
+demo? If yes, say it in a sentence; don't demo it. Anything not needed for these beats is out of scope
+unless the owner agrees otherwise.
 
-Slow steps (agent answers take 20-60 seconds) are started early and talked over. The analyst's department
-is set well before the call, because dynamic group updates take minutes.
+1. **A CIM arrives for Project Atlas** (0:00-2:00). The partner has the banker's email open in Outlook
+   and tells their agent: "Set up a deal room for Project Atlas, add Priya and Sam, and file the CIM."
+   - **The model talks back.** Sensitivity is required by the model, so the agent asks how confidential
+     Atlas is. "I didn't prompt that. The model required it." The partner answers "Confidential".
+   - **The backplane builds it.** The MCP tool checks the model's rules and, as the partner, creates the
+     team, applies the site template and the domain, deal and sensitivity tags, adds the members and files
+     the CIM. Open the CIM's properties: tagged, by nobody. Show the receipt and the model behind it.
+   - **A deterministic no.** The partner asks to add an external banker contact. The tool refuses, citing
+     the model's rule that Confidential rooms take no guests. The model decided, not the LLM.
+   - *Plug-in: the CIM arrives from a banker's data room or the deal inbox; licensed research, prior IC
+     memos and sector theses join as further stores in the model, and agents only retrieve as the asker.*
+2. **The month-end portfolio pack lands** (2:00-3:00). The partner asks the portfolio data agent which
+   companies are behind plan on EBITDA; the answer uses the same glossary terms that tag the documents.
+   Then "What's Fabrikam's IRR?": IRR is not a defined term, so the agent says so and offers the closest
+   defined terms. *Plug-in: the firm's warehouse, semantic models or portfolio monitoring tool; terms
+   bind to whatever calculation finance already treats as authoritative.*
+3. **The firm licenses a new data source** (3:00-4:15). The platform owner, in Claude Code: "Onboard a new
+   data source to Private Equity". One model change, compiled, confirmed in the conformance report, the
+   git diff as the audit trail. Today that is a ticket to each team that owns a piece of it.
+4. **Close** (4:15-5:00). Every object traces to its domain, terms and access. Switch the backplane off
+   and everything still works as plain Microsoft 365. "I built this with Claude Code; the repo holds every
+   decision and its evidence. Agents propose, deterministic code applies, a human approves: that's how
+   I'd run the AI team too." Optional: a 10-second switch to the analyst's browser profile, where Atlas
+   doesn't exist.
 
-Demo content (all fictional, in the repo): a CIM for Project Atlas, a few public-style research notes for
-the research site, and the existing portfolio data.
+**Say, don't show:** permission-trimmed retrieval (Microsoft's promise); new joiners getting access from
+their department; swapping the compile target (attribute-based access as it matures, or AWS Lake
+Formation tags) without changing the model; drift detection. Hold these for questions.
+
+Slow steps (agent answers take 20-60 seconds) are started early and talked over.
+
+Demo content (all fictional, in the repo): a CIM for Project Atlas and the existing portfolio data.
 
 ## Definition of done
 
@@ -109,7 +114,6 @@ the research site, and the existing portfolio data.
 - [ ] Licences assigned to a group; three Contoso personas (partner, analyst on another deal, ops lead who
       owns the glossary), each used only from its own browser profile
 - [ ] F2 capacity in the existing subscription, paused when idle
-- [ ] Copilot Chat pay-as-you-go billing policy scoped to the personas group
 
 **Model and compiler (change time)**
 - [ ] LinkML schema and Contoso instance data, validated in CI; `gen-doc` output in `docs/`
@@ -123,6 +127,7 @@ the research site, and the existing portfolio data.
 - [ ] `create_deal_room` tool: input schema generated from the model; rule check against the model;
       runs as the calling user; creates the team with its label, applies the site template and library
       defaults, adds members, files the CIM, writes a receipt
+- [ ] Rule refusal: adding a guest to a Confidential room is refused with the rule's name
 - [ ] Verified from the Claude desktop app as the partner (option B)
 - [ ] Pay-as-you-go authoring check for Copilot Studio (about 10 minutes, $0). If it passes: the same
       server hosted in Azure Functions with on-behalf-of sign-in and no stored secret, behind a Copilot
@@ -132,10 +137,9 @@ the research site, and the existing portfolio data.
 - [ ] Identity: setting a persona's department places them in the right domain group, nothing else done
 - [ ] Group membership: the partner's request creates "Project Atlas" with the right members
 - [ ] Business terms: the CIM carries domain, deal and sensitivity tags no user applied; portfolio
-      measures carry the same glossary terms
-- [ ] Entitlements: the agent asks for the missing sensitivity; research visible to all; Atlas only to
-      its team; portfolio only to its domain; an AI answer per persona (SharePoint agent on Atlas, Fabric
-      data agent on the portfolio)
+      answers use the same glossary terms; an undefined term (IRR) is refused, not estimated
+- [ ] Entitlements: the agent asks for the missing sensitivity; the guest request is refused; Atlas only
+      visible to its team; portfolio only to its domain
 - [ ] Observability: receipts, conformance report, model history in git, Microsoft 365 audit log entries
 
 **The live moment**
@@ -159,7 +163,7 @@ multi-month commitment.
 3. Compiler and conformance report for the model-level objects.
 4. Backplane MCP server with `create_deal_room`; verify end to end from the Claude desktop app (B).
 5. In parallel: the Copilot Studio pay-as-you-go check. Then A if it passes.
-6. Portfolio store redeployed; SharePoint agent on Atlas; research site and demo content.
+6. Portfolio store redeployed; Atlas CIM content.
 7. Docs, evidence, adversarial review, merge.
 
 ## Environment facts
