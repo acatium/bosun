@@ -3,55 +3,40 @@ name: ci
 on:
   pull_request:
     branches: [main]
-  workflow_call:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
-  guardrails:
+  checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
-      - run: pip install pyyaml==6.0.2
-      - name: Firm profile, infrastructure and bootstrap allowlists
-        env:
-          FIRM_PROFILE: ${{ vars.FIRM_PROFILE }}
-        run: python tools/check_guardrails.py
+          python-version: '3.13'
+      - run: pip install -r requirements.txt
+      - name: Model (LinkML validation and reference checks)
+        run: python -m backplane validate
+      - name: Generated classes match the schema
+        run: |
+          { echo "# Generated from model/bosun.yaml by gen-pydantic. Do not edit; regenerate with: model/.venv/bin/gen-pydantic model/bosun.yaml"; gen-pydantic model/bosun.yaml; } > /tmp/generated.py
+          diff -u backplane/generated.py /tmp/generated.py
+      - name: Tests (offline)
+        run: python -m unittest discover -s tests -v
       - name: Portability (no environment-specific identifiers in tracked files)
         env:
           AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          TENANT_DOMAIN: ${{ vars.TENANT_DOMAIN }}
+          SHAREPOINT_HOST: ${{ vars.SHAREPOINT_HOST }}
           GITHUB_OWNER: ${{ github.repository_owner }}
         run: python tools/check_portability.py
       - name: Deny-list scan (files and full history)
         env:
           DENYLIST: ${{ secrets.DENYLIST }}
         run: python tools/check_denylist.py
-
-  what-if:
-    needs: guardrails
-    if: github.event_name == 'pull_request' && vars.AZURE_CLIENT_ID != ''
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: azure/login@v2
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Preview infrastructure changes
-        run: >
-          az deployment group what-if
-          --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}"
-          --template-file infra/main.bicep
-          --parameters prefix="${{ vars.FIRM_PREFIX }}"

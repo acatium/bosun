@@ -6,7 +6,29 @@ MCP server running as Dana · **Mode:** dry run (`BOSUN_DRY_RUN=1`): rules and m
 The `create_deal_room` tool's input schema is generated from `DealRoomRequest` in `model/bosun.yaml`, where
 `sensitivity` is required, has no default and is limited to Public, Internal or Confidential.
 
-## Turn 1: the partner asks without a sensitivity
+## Turn 1 again, without any server instruction about sensitivity
+
+After the audit, the MCP server's instruction "never guess a sensitivity" was removed, so the only guidance
+the agent receives is the model's own field description ("How confidential the deal is. Never defaulted.")
+carried into the tool schema. The agent still asked:
+
+```
+AGENT: Before I create the room I need one thing from you: **what sensitivity level should Project Atlas have?** The deal-room tool requires it and the firm's rules say it can never be filled in by default. The options are:
+
+- **Public**
+- **Internal**
+- **Confidential**
+
+Deal rooms with a CIM are usually Confidential, but you need to choose. Once you do, I'll create the room with:
+
+- **Name:** Project Atlas
+- **Members:** <priya-persona>@<tenant>, <sam-persona>@<tenant>
+- **File from inbox:** attachments from the email with the subject "Project Atlas" (the CIM)
+
+Also, if Elena's email has a more specific subject than just "Project Atlas", tell me that too so I file the right attachments.
+```
+
+## Turn 1 (original run, with the server instruction): the partner asks without a sensitivity
 
 Prompt: "Set up a deal room for Project Atlas, add Priya Shah (<priya-persona>@<tenant>) and Sam Okafor
 (<sam-persona>@<tenant>), and file the CIM from my inbox."

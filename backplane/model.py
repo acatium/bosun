@@ -1,6 +1,6 @@
 """Load the LinkML model and check what LinkML's validators do not: that every reference resolves.
 
-LinkML validation (run in CI and by `backplane validate`) checks types, enums, required fields and patterns.
+LinkML validation (run by `backplane validate`, locally and in CI) checks types, enums, required fields and patterns.
 It does not check that a rule's role or a term's owner actually exists, so that check lives here.
 """
 from __future__ import annotations
@@ -44,8 +44,9 @@ class Model:
 
 def linkml_validate(path: pathlib.Path) -> tuple[bool, str]:
     """Run LinkML's own validator against the schema."""
-    exe = ROOT / "model" / ".venv" / "bin" / "linkml"
-    result = subprocess.run([str(exe), "validate", "--schema", str(SCHEMA), "--target-class", "Firm", str(path)],
+    local = ROOT / "model" / ".venv" / "bin" / "linkml"
+    exe = str(local) if local.exists() else "linkml"
+    result = subprocess.run([exe, "validate", "--schema", str(SCHEMA), "--target-class", "Firm", str(path)],
                             capture_output=True, text=True)
     output = (result.stdout + result.stderr).strip()
     return result.returncode == 0 and "No issues found" in output, output

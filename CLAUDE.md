@@ -76,25 +76,31 @@ unless the owner agrees otherwise.
 
 1. **A CIM arrives for Project Atlas** (0:00-2:00). The partner has the banker's email open in Outlook
    and tells their agent: "Set up a deal room for Project Atlas, add Priya and Sam, and file the CIM."
-   - **The model talks back.** Sensitivity is required by the model, so the agent asks how confidential
-     Atlas is. "I didn't prompt that. The model required it." The partner answers "Confidential".
+   - **The model talks back.** The model marks sensitivity as required and never defaulted, and the tool's
+     schema is generated from the model, so the agent asks how confidential Atlas is. (The server gives
+     no instruction about it; the schema cannot force a question, only a value.) The partner answers
+     "Confidential".
    - **The backplane builds it.** The MCP tool checks the model's rules and, as the partner, creates the
      team, applies the site template and the domain, deal and sensitivity tags, adds the members and files
      the CIM. Open the CIM's properties: tagged, by nobody. Show the receipt and the model behind it.
-   - **A deterministic no.** The partner asks to add an external banker contact. The tool refuses, citing
-     the model's rule that Confidential rooms take no guests. The model decided, not the LLM.
+   - **A deterministic no.** The partner asks to add the banker, who is a guest in the directory. The tool
+     refuses, citing the model's rule that Confidential rooms take no guests. Say it precisely: the tool's
+     check is a guardrail on the agent's path; the Confidential label is the native control that also stops
+     a person adding a guest by hand.
    - *Plug-in: the CIM arrives from a banker's data room or the deal inbox; licensed research, prior IC
      memos and sector theses join as further stores in the model, and agents only retrieve as the asker.*
 2. **The month-end portfolio pack lands** (2:00-3:00). The partner asks the portfolio data agent which
    companies are behind plan on EBITDA; the answer uses the same glossary terms that tag the documents.
    Then "What's Fabrikam's IRR?": IRR is not a defined term, so the agent says so and offers the closest
-   defined terms. *Plug-in: the firm's warehouse, semantic models or portfolio monitoring tool; terms
+   defined terms. This refusal comes from the agent's instructions, which the compiler generates from the
+   model's terms; it is not deterministic code, so don't group it with the guest refusal. *Plug-in: the firm's warehouse, semantic models or portfolio monitoring tool; terms
    bind to whatever calculation finance already treats as authoritative.*
 3. **Finance defines IRR** (3:00-4:15). The IRR refusal goes to Jordan, the Finance & Operations lead
    who owns the glossary. Jordan agrees a definition (Gross IRR from fund cash flows, as of quarter end)
    and names the fund administrator's cash-flow file as the source. The platform owner, in Claude Code
    through the `/backplane` Skill, adds the term to the model: a few lines, shown as a diff. The compiler
-   loads the cash-flow file into the lakehouse with its domain, tags and access, adds the IRR measure to
+   loads the cash-flow file into the governed portfolio store (the store carries domain, tags and access;
+   access is per store, nothing finer, because the agent reads through a fixed identity), adds the IRR measure to
    the semantic model bound to the term, adds the term to the term store, updates the data agent's
    vocabulary, and the conformance report shows it. The partner asks again and gets Fabrikam's IRR under
    the agreed definition, as of quarter end, with the source named. Normally that is four teams (data
@@ -134,9 +140,10 @@ the same tool would also create the Team on that group; governance is unchanged.
 **Model and compiler (change time)**
 - [ ] LinkML schema and Contoso instance data, validated in CI; `gen-doc` output in `docs/`
 - [ ] Compiler, operated through a Claude Code Skill (validate → plan → apply → report), emits:
-      dynamic domain groups (from the user's department), term sets and terms, content type and
-      per-domain site templates, the Fabric domain, tags and workspace roles; the portfolio store
-      redeployed from the repo
+      dynamic domain groups (from the user's department), term sets and terms, the Fabric domain, tags and
+      workspace roles, dataset loads, semantic model tables and measures, and the data agent's vocabulary.
+      Deal-room libraries are set up by the backplane tool at creation (no content type or site template).
+      Sensitivity labels are a one-time admin prerequisite (`local/admin`), documented, not compiled
 - [ ] Conformance report: every store's domain, terms and access group, and drift
 
 **Backplane MCP server (runtime)**
@@ -152,8 +159,9 @@ the same tool would also create the Team on that group; governance is unchanged.
 **One proof per primitive, from the user's seat**
 - [ ] Identity: setting a persona's department places them in the right domain group, nothing else done
 - [ ] Group membership: the partner's request creates "Project Atlas" with the right members
-- [ ] Business terms: the CIM carries domain, deal and sensitivity tags no user applied; portfolio
-      answers use the same glossary terms; an undefined term (IRR) is refused, not estimated
+- [ ] Business terms: the CIM carries domain, deal and sensitivity tags no user applied (library
+      defaults, not term-store terms); business terms live in the term store and on the measures; portfolio
+      answers use them; an undefined term (IRR) is refused by the agent's generated instructions
 - [ ] Entitlements: the agent asks for the missing sensitivity; the guest request is refused; Atlas only
       visible to its team; portfolio only to its domain
 - [ ] Observability: receipts, conformance report, model history in git, Microsoft 365 audit log entries

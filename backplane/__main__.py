@@ -60,7 +60,7 @@ def main() -> int:
                       or step.get("item_name") or step.get("tag") or step.get("name") or step.get("domain") or "")
             print(f"  {step['op']:<14} {detail}")
         for step in drift:
-            print(f"  drift          {step['term']}: {step['detail']} (fix by hand or in the model)")
+            print(f"  drift          {step.get('term') or step.get('group')}: {step['detail']} (not managed by the model; decide whether to add it or remove it)")
         if args.command == "apply" and steps:
             applied = target.apply(model, steps) if target is semantic else target.apply(steps)
             for line in applied:

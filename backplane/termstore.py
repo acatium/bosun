@@ -44,9 +44,34 @@ def plan(model: Model) -> list[dict]:
             if stored_name(name) not in existing:
                 steps.append({"op": "create-term", "group": group, "set": set_name, "term": name, "description": description})
             elif existing[stored_name(name)] != description:
+                steps.append({"op": "update-term", "group": group, "set": set_name, "term": name, "description": description})
+        wanted = {stored_name(n) for n in terms}
+        for name in existing:
+            if name not in wanted:
                 steps.append({"op": "drift", "group": group, "set": set_name, "term": name,
-                              "detail": "description differs from the model"})
+                              "detail": "in the term store but not in the model"})
     return steps
+
+
+def _graph(method: str, url: str, body: dict | None = None) -> dict:
+    import json as _json
+    args = ["request", "--url", url, "--method", method]
+    if body is not None:
+        args += ["--body", _json.dumps(body), "--content-type", "application/json"]
+    result = m365(*args)
+    return result if isinstance(result, dict) else {}
+
+
+def _update_description(set_name: str, term_name: str, description: str) -> None:
+    root = _graph("get", "https://graph.microsoft.com/v1.0/sites/root?$select=id")["id"]
+    store = f"https://graph.microsoft.com/v1.0/sites/{root}/termStore"
+    for term_set in _graph("get", f"{store}/sets").get("value", []):
+        if term_set["localizedNames"][0]["name"] != set_name:
+            continue
+        for term in _graph("get", f"{store}/sets/{term_set['id']}/terms").get("value", []):
+            if term["labels"][0]["name"] == stored_name(term_name):
+                _graph("patch", f"{store}/sets/{term_set['id']}/terms/{term['id']}",
+                       {"descriptions": [{"description": description, "languageTag": "en-US"}]})
 
 
 def apply(steps: list[dict]) -> list[str]:
@@ -57,6 +82,8 @@ def apply(steps: list[dict]) -> list[str]:
                  "--description", "Compiled from the Bosun model. Do not edit by hand.")
         elif step["op"] == "create-set":
             m365("spo", "term", "set", "add", "--name", step["set"], "--termGroupName", step["group"])
+        elif step["op"] == "update-term":
+            _update_description(step["set"], step["term"], step["description"])
         elif step["op"] == "create-term":
             m365("spo", "term", "add", "--name", step["term"], "--termSetName", step["set"],
                  "--termGroupName", step["group"], "--description", step["description"])

@@ -14,10 +14,7 @@ from .model import load
 
 server = MCPServer(
     "contoso-backplane",
-    instructions=(
-        "Tools for Contoso Capital's governed workspace. Ask the user for any required field they did not "
-        "give; never guess a sensitivity. Report refusals exactly as returned, including the rule name."
-    ),
+    instructions="Tools for Contoso Capital's governed workspace. Report refusals exactly as returned.",
 )
 
 

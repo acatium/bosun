@@ -76,8 +76,6 @@ def build(model: Model) -> dict:
         "compiled_objects": {
             "groups": sorted(entra.desired(model)),
             "term_sets": {k: sorted(v) for k, v in termstore.desired(model).items()},
-            "stores": {sid: {"kind": s["kind"], "domain": s["domain"], "sensitivity": s.get("sensitivity")}
-                       for sid, s in model.stores.items()},
         },
         "drift": drift,
         "deal_rooms": rooms,
@@ -99,9 +97,11 @@ def render(report: dict) -> str:
         status = "conformant" if room["conformant"] else "NOT CONFORMANT: " + "; ".join(room["issues"])
         defaults = ", ".join(f"{k}={v}" for k, v in room["library_defaults"].items())
         lines.append(f"  - {room['deal_room']}: label {room['sensitivity'] or 'none'}, {room['visibility']}, {room['members']} members, "
-                     f"guests: {len(room['guests'])}; tags (verified by the backplane as the owner): {defaults or 'none'} -> {status}")
+                     f"guests: {len(room['guests'])}; library tags (attested at creation): {defaults or 'none'} -> {status}")
     if report["deal_rooms"]:
-        lines.append("  (Room content is not readable by the platform owner: deal team membership is the barrier.)")
+        lines.append("  (Label, privacy, members and guests are read from the directory now. Library tags are attested by")
+        lines.append("   the backplane when it created the room: the platform owner cannot read room content, by design.)")
+    lines.append("Not checked by this report: sensitivity label settings (a one-time admin prerequisite).")
     lines.append("")
     lines.append("Overall: " + ("CONFORMANT" if report["conformant"] else "NOT CONFORMANT"))
     return "\n".join(lines)

@@ -57,12 +57,16 @@ def plan(model: Model) -> list[dict]:
             steps.append({"op": "create", "group": name, **spec})
         elif "DynamicMembership" not in current.get("groupTypes", []) or current.get("membershipRule") != spec["rule"]:
             steps.append({"op": "update", "group": name, "id": current["id"], **spec})
+    managed_prefixes = (f"{prefix(model)}-domain-", f"{prefix(model)}-role-")
+    for name in have:
+        if name.startswith(managed_prefixes) and name not in want:
+            steps.append({"op": "drift", "group": name, "detail": "group not in the model"})
     return steps
 
 
 def apply(steps: list[dict]) -> list[str]:
     done = []
-    for step in steps:
+    for step in [s for s in steps if s["op"] != "drift"]:
         body = {"groupTypes": ["DynamicMembership"], "membershipRule": step["rule"],
                 "membershipRuleProcessingState": "On", "description": step["description"]}
         if step["op"] == "create":
