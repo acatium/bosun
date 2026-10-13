@@ -1,0 +1,121 @@
+id: https://example.org/bosun
+name: bosun
+title: Bosun governance primitives
+description: >-
+  The primitives that people, agents and systems reason about: domains, roles, business terms, stores and
+  entitlement rules over tags. Holds only what changes slowly. Deal room instances, membership and
+  documents belong to Microsoft 365, not to this model.
+license: MIT
+prefixes:
+  bosun: https://example.org/bosun/
+  linkml: https://w3id.org/linkml/
+default_prefix: bosun
+default_range: string
+imports:
+  - linkml:types
+
+classes:
+  Firm:
+    tree_root: true
+    description: The firm and everything the backplane governs.
+    attributes:
+      name: {required: true}
+      domains: {range: Domain, multivalued: true, inlined_as_list: true, required: true}
+      roles: {range: Role, multivalued: true, inlined_as_list: true, required: true}
+      terms: {range: Term, multivalued: true, inlined_as_list: true}
+      stores: {range: Store, multivalued: true, inlined_as_list: true}
+      rules: {range: Rule, multivalued: true, inlined_as_list: true}
+
+  Domain:
+    description: A part of the firm that owns data and decisions. Domains nest one level at most.
+    attributes:
+      id: {identifier: true, pattern: "^[a-z][a-z0-9-]*$"}
+      name: {required: true}
+      description: {}
+      parent: {range: Domain}
+      owner: {range: Role, required: true, description: "The role accountable for this domain."}
+
+  Role:
+    description: A kind of person. Membership comes from the directory attribute, never by hand.
+    attributes:
+      id: {identifier: true, pattern: "^[a-z][a-z0-9-]*$"}
+      name: {required: true}
+      domain: {range: Domain, required: true}
+      department: {required: true, description: "The Entra department value that places a person in this role's domain."}
+      job_title: {description: "The Entra job title that distinguishes this role within its domain."}
+
+  Term:
+    description: A closed business term. Each term means one thing and binds to one authoritative calculation.
+    attributes:
+      id: {identifier: true, pattern: "^[a-z][a-z0-9-]*$"}
+      name: {required: true}
+      definition: {required: true}
+      domain: {range: Domain, required: true}
+      owner: {range: Role, required: true, description: "Who approves changes to this term."}
+      measure: {description: "The semantic model measure that is the authoritative calculation."}
+      source: {range: Store, description: "The store whose data the measure is calculated from, if not the default."}
+      calculation: {description: "The authoritative calculation in the semantic model's language (DAX). The compiler adds the measure if it is missing."}
+
+  Store:
+    description: Somewhere data or documents live. Deal rooms are templates; each instance is created on request.
+    attributes:
+      id: {identifier: true, pattern: "^[a-z][a-z0-9-]*$"}
+      name: {required: true}
+      kind: {range: StoreKind, required: true}
+      domain: {range: Domain, required: true}
+      sensitivity: {range: Sensitivity, description: "Fixed sensitivity. Deal rooms leave this empty and ask for it on each request."}
+      within: {range: Store, description: "The store that contains this one, e.g. the workspace holding a dataset."}
+      file: {description: "Repository path of the data loaded into a dataset."}
+      table: {description: "Lakehouse table a dataset loads into."}
+
+  Rule:
+    description: An entitlement written over roles, stores and tags. The backplane compiles rules into native grants and checks them at request time.
+    attributes:
+      id: {identifier: true, pattern: "^[a-z][a-z0-9-]*$"}
+      description: {required: true}
+      effect: {range: Effect, required: true}
+      action: {range: Action, required: true}
+      role: {range: Role, description: "Applies to people in this role. Empty means anyone."}
+      store: {range: Store, description: "Applies to this store. Empty means any store."}
+      sensitivity: {range: Sensitivity, description: "Applies only when the store has this sensitivity."}
+      member_kind: {range: MemberKind, description: "For add_member, the kind of person being added."}
+      audience: {range: Audience, description: "For read, who may read."}
+
+  DealRoomRequest:
+    description: >-
+      What a person must supply to open a deal room. The backplane's create_deal_room tool takes its input
+      schema from this class, so an agent cannot call it without every required field.
+    attributes:
+      name: {required: true, description: "The deal's code name, e.g. Project Atlas."}
+      members: {multivalued: true, required: true, description: "Email addresses of the deal team."}
+      sensitivity: {range: Sensitivity, required: true, description: "How confidential the deal is. Never defaulted."}
+      file_from_inbox: {description: "Optional subject text of an email whose attachments are filed into the room."}
+
+enums:
+  Sensitivity:
+    description: Sensitivity tags; each maps to a Purview sensitivity label.
+    permissible_values:
+      Public: {description: "May be shared firm-wide."}
+      Internal: {description: "Internal to the owning domain."}
+      Confidential: {description: "Deal team only. Private, no guests."}
+  StoreKind:
+    permissible_values:
+      DealRoom: {description: "A Microsoft 365 group with its SharePoint site, created per deal."}
+      Workspace: {description: "A Fabric workspace."}
+      Dataset: {description: "A lakehouse table within a workspace."}
+  Effect:
+    permissible_values: {allow: {}, deny: {}}
+  Action:
+    permissible_values:
+      open: {description: "Create a new instance of a store template."}
+      add_member: {description: "Add a person to a store instance."}
+      read: {description: "Read the store's content."}
+  MemberKind:
+    permissible_values:
+      Member: {description: "A person in the firm's directory."}
+      Guest: {description: "Anyone outside the firm."}
+  Audience:
+    permissible_values:
+      Everyone: {description: "Everyone in the firm."}
+      DomainMembers: {description: "People in the store's domain."}
+      StoreMembers: {description: "People added to the store instance."}

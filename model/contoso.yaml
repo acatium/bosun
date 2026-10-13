@@ -1,0 +1,39 @@
+# Contoso Capital: a fictional private markets firm. Everything the backplane governs, in one file.
+name: Contoso Capital
+
+domains:
+  - {id: private-equity, name: Private Equity, owner: pe-partner, description: "Sourcing, diligence and ownership of private companies."}
+  - {id: finance-operations, name: Finance & Operations, owner: ops-lead, description: "Fund accounting, reporting and the firm's authoritative figures."}
+  - {id: technology, name: Technology, owner: platform-owner, description: "The AI platform, identity and infrastructure."}
+
+roles:
+  - {id: pe-partner, name: Partner, domain: private-equity, department: Private Equity, job_title: Partner}
+  - {id: pe-deal-team, name: Deal team, domain: private-equity, department: Private Equity}
+  - {id: ops-lead, name: Finance & Operations Lead, domain: finance-operations, department: Finance & Operations}
+  - {id: platform-owner, name: Platform owner, domain: technology, department: Technology}
+
+terms:
+  - {id: revenue, name: Revenue, domain: finance-operations, owner: ops-lead, measure: Revenue, definition: "Recognised revenue for the period in USD thousands, actual scenario."}
+  - {id: plan-revenue, name: Plan revenue, domain: finance-operations, owner: ops-lead, measure: Plan Revenue, definition: "Revenue in the value creation plan for the same period."}
+  - {id: ebitda, name: EBITDA, domain: finance-operations, owner: ops-lead, measure: EBITDA, definition: "Earnings before interest, tax, depreciation and amortisation in USD thousands, actual scenario."}
+  - {id: plan-ebitda, name: Plan EBITDA, domain: finance-operations, owner: ops-lead, measure: Plan EBITDA, definition: "EBITDA in the value creation plan for the same period."}
+  - {id: ebitda-variance-to-plan, name: EBITDA variance to plan, domain: finance-operations, owner: ops-lead, measure: EBITDA vs Plan %, definition: "(EBITDA - Plan EBITDA) / Plan EBITDA. Negative means behind plan."}
+  - {id: ebitda-margin, name: EBITDA margin, domain: finance-operations, owner: ops-lead, measure: EBITDA Margin %, definition: "EBITDA / Revenue, actual scenario."}
+  - {id: ltm-ebitda, name: LTM EBITDA, domain: finance-operations, owner: ops-lead, measure: LTM EBITDA, definition: "Actual EBITDA over the twelve months ending with the latest month in context."}
+  - {id: net-debt, name: Net debt, domain: finance-operations, owner: ops-lead, measure: Net Debt, definition: "Net debt at the latest month in context in USD millions, actual scenario."}
+  - {id: leverage, name: Leverage, domain: finance-operations, owner: ops-lead, measure: Leverage x, definition: "Net debt / LTM EBITDA, as a multiple."}
+  - {id: value-creation-initiative, name: Value creation initiative, domain: private-equity, owner: pe-partner, measure: Initiative Target Uplift, definition: "A named lever in a company's value creation plan with a target annual EBITDA uplift."}
+
+stores:
+  - {id: deal-room, name: Deal room, kind: DealRoom, domain: private-equity}
+  - {id: portfolio, name: Contoso Portfolio, kind: Workspace, domain: finance-operations, sensitivity: Internal}
+  - {id: monthly-financials, name: Monthly financials, kind: Dataset, domain: finance-operations, sensitivity: Internal, within: portfolio, file: data/portfolio/monthly_financials.csv, table: monthly_financials}
+  - {id: companies, name: Portfolio companies, kind: Dataset, domain: finance-operations, sensitivity: Internal, within: portfolio, file: data/portfolio/companies.csv, table: companies}
+  - {id: value-creation-initiatives, name: Value creation initiatives, kind: Dataset, domain: private-equity, sensitivity: Internal, within: portfolio, file: data/portfolio/value_creation_initiatives.csv, table: value_creation_initiatives}
+
+rules:
+  - {id: partners-open-deal-rooms, description: "Partners may open deal rooms.", effect: allow, action: open, role: pe-partner, store: deal-room}
+  - {id: confidential-no-guests, description: "Confidential stores never include people outside the firm.", effect: deny, action: add_member, sensitivity: Confidential, member_kind: Guest}
+  - {id: deal-room-members-read, description: "Only the deal team reads a deal room.", effect: allow, action: read, store: deal-room, audience: StoreMembers}
+  - {id: portfolio-domain-read, description: "Finance & Operations reads the portfolio store.", effect: allow, action: read, store: portfolio, audience: DomainMembers}
+  - {id: portfolio-partners-read, description: "Partners read the portfolio store.", effect: allow, action: read, store: portfolio, role: pe-partner}
