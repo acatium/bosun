@@ -56,9 +56,10 @@ Decisions already taken (rationale in `docs/decisions.md`):
 |---|---|---|
 | Source of truth | LinkML model in git | Terraform (infrastructure layer, wrong owner); hand-configured tenant |
 | Applying the model | Deterministic compiler, operated through a Claude Code Skill, using CLI for Microsoft 365 + `az` | Terraform providers; an agent acting on the tenant directly |
-| Deal rooms | The partner asks their agent; the backplane MCP tool creates and tags the room as the partner | Users clicking through templates; approval workflow and Logic Apps provisioning (described only) |
+| Deal rooms | The partner asks their agent; the backplane MCP tool creates and tags the room (a Microsoft 365 group and its SharePoint site) as the partner | Users clicking through templates; approval workflow and Logic Apps provisioning (described only) |
 | Partner's agent | **A:** Copilot in Outlook/Teams (Copilot Studio agent → MCP server hosted in Azure Functions, on-behalf-of sign-in, no stored secret), if pay-as-you-go authoring works. **B:** Claude desktop app beside Outlook with the same MCP server running locally as the partner. Same tools, model and guardrails either way | Per-user Copilot or Copilot Studio licences |
-| Tenant | The existing tenant plus a Microsoft 365 E5 trial; the demo runs only from Contoso persona browser profiles | A new tenant (cleaner, but slower) |
+| Tenant | The existing tenant plus a Microsoft 365 E5 (no Teams) trial; the demo runs only from Contoso persona browser profiles | A new tenant (cleaner, but slower); upgrading real E3 seats |
+| Foundry | Not used: hosting Claude in Foundry is billing consolidation, not a demo point | Claude Code on a Foundry deployment |
 | Confidential vs public | Private teams with a sensitivity label vs a firm-wide research site; normal permission trimming | Restricted Content Discovery (hides from members too), Restricted SharePoint Search (retiring) |
 | Metric interchange | Apache Ossie named as the future emit target for term-to-measure bindings; not built | Building on a 0.2 draft with no access constructs |
 | AI over documents | Not demonstrated: permission-trimmed retrieval is Microsoft's promise, named not shown | A SharePoint agent demo (spend and time for no differentiation) |
@@ -89,9 +90,15 @@ unless the owner agrees otherwise.
    Then "What's Fabrikam's IRR?": IRR is not a defined term, so the agent says so and offers the closest
    defined terms. *Plug-in: the firm's warehouse, semantic models or portfolio monitoring tool; terms
    bind to whatever calculation finance already treats as authoritative.*
-3. **The firm licenses a new data source** (3:00-4:15). The platform owner, in Claude Code: "Onboard a new
-   data source to Private Equity". One model change, compiled, confirmed in the conformance report, the
-   git diff as the audit trail. Today that is a ticket to each team that owns a piece of it.
+3. **Finance defines IRR** (3:00-4:15). The IRR refusal goes to Jordan, the Finance & Operations lead
+   who owns the glossary. Jordan agrees a definition (Gross IRR from fund cash flows, as of quarter end)
+   and names the fund administrator's cash-flow file as the source. The platform owner, in Claude Code
+   through the `/backplane` Skill, adds the term to the model: a few lines, shown as a diff. The compiler
+   loads the cash-flow file into the lakehouse with its domain, tags and access, adds the IRR measure to
+   the semantic model bound to the term, adds the term to the term store, updates the data agent's
+   vocabulary, and the conformance report shows it. The partner asks again and gets Fabrikam's IRR under
+   the agreed definition, as of quarter end, with the source named. Normally that is four teams (data
+   ingestion, BI, catalog, access) and weeks; here it is one decision and one reviewed change.
 4. **Close** (4:15-5:00). Every object traces to its domain, terms and access. Switch the backplane off
    and everything still works as plain Microsoft 365. "I built this with Claude Code; the repo holds every
    decision and its evidence. Agents propose, deterministic code applies, a human approves: that's how
@@ -104,13 +111,17 @@ Formation tags) without changing the model; drift detection. Hold these for ques
 
 Slow steps (agent answers take 20-60 seconds) are started early and talked over.
 
-Demo content (all fictional, in the repo): a CIM for Project Atlas and the existing portfolio data.
+Demo content (all fictional, in the repo): a CIM for Project Atlas, the existing portfolio data, and a fund
+administrator cash-flow file for the IRR beat.
+
+No Teams: a deal room is a Microsoft 365 group with its SharePoint site and mailbox. In a firm with Teams,
+the same tool would also create the Team on that group; governance is unchanged.
 
 ## Definition of done
 
 **Tenant**
-- [ ] Microsoft 365 E5 trial added to the existing tenant (with Teams), recurring billing off,
-      self-service trials and purchases off
+- [ ] Microsoft 365 E5 (no Teams) trial in the existing tenant; not cancelled until after the interview
+      (cancelling suspends licences immediately); self-service trials and purchases off
 - [ ] Licences assigned to a group; three Contoso personas (partner, analyst on another deal, ops lead who
       owns the glossary), each used only from its own browser profile
 - [ ] F2 capacity in the existing subscription, paused when idle
@@ -143,8 +154,10 @@ Demo content (all fictional, in the repo): a CIM for Project Atlas and the exist
 - [ ] Observability: receipts, conformance report, model history in git, Microsoft 365 audit log entries
 
 **The live moment**
-- [ ] In Claude Code: "Onboard a new data source to Private Equity": one model change, compiled,
-      confirmed in the conformance report, with the git diff as the audit trail
+- [ ] "Finance defines IRR": one model change (term, owner, source, domain) compiled into a lakehouse
+      table with domain, tags and access, an IRR measure bound to the term, the term store, and the data
+      agent's vocabulary; the partner's re-asked question is answered under the agreed definition
+- [ ] The data agent's term list is generated from the model, so new terms reach it automatically
 
 **Repository**
 - [ ] `docs/`: primitives mapping, decisions and rejected alternatives, research with sources, Azure vs
@@ -158,12 +171,12 @@ multi-month commitment.
 
 ## Build order
 
-1. Microsoft 365 E5 trial and personas (owner starts the trial; the rest is scripted).
+1. Microsoft 365 E5 (no Teams) trial and personas (owner starts the trial; the rest is scripted).
 2. LinkML model and schema, merging `config/profiles/contoso.yaml` and `config/glossary.yaml`.
 3. Compiler and conformance report for the model-level objects.
 4. Backplane MCP server with `create_deal_room`; verify end to end from the Claude desktop app (B).
 5. In parallel: the Copilot Studio pay-as-you-go check. Then A if it passes.
-6. Portfolio store redeployed; Atlas CIM content.
+6. Portfolio store redeployed; Atlas CIM and fund cash-flow content; the IRR beat.
 7. Docs, evidence, adversarial review, merge.
 
 ## Environment facts
