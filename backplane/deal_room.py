@@ -102,35 +102,58 @@ def create(model: Model, request: DealRoomRequest) -> dict:
         roles = caller_roles(model, me)
         steps.append({"step": "rule-check", "roles": roles, "allowed_by": check_open(model, roles)})
 
-        tenant_domain = me["userPrincipalName"].split("@", 1)[1].lower()
-        for email in request.members:  # every member is checked against the rules before anything else happens
-            kind = "Member" if email.lower().endswith("@" + tenant_domain) else "Guest"
-            check_member(model, sensitivity, kind, email)
-        member_ids = [call("GET", f"{GRAPH}/users/{urllib.parse.quote(email)}?$select=id")["id"]
-                      for email in request.members]
+        member_ids = []
+        for email in request.members:  # look everyone up, then check every member against the rules before acting
+            quoted = email.replace("'", "''")
+            found = call("GET", f"{GRAPH}/users?$filter=" + urllib.parse.quote(
+                f"userPrincipalName eq '{quoted}' or mail eq '{quoted}'") + "&$select=id,userType")
+            if not found.get("value"):
+                raise Refused(f"Cannot add {email}: not found in the firm's directory.")
+            user = found["value"][0]
+            if user.get("userType") not in ("Member", "Guest"):
+                raise Refused(f"Cannot add {email}: could not confirm whether they are inside the firm.")
+            check_member(model, sensitivity, user["userType"], email)
+            member_ids.append(user["id"])
         steps.append({"step": "member-check", "members": request.members, "result": "all permitted"})
+        if os.environ.get("BOSUN_DRY_RUN"):
+            record["result"] = "dry-run"
+            return {"result": "dry-run", "would_create": request.model_dump(mode="json"), "steps": steps}
 
-        group_body = {
-            "displayName": request.name, "mailNickname": f"deal-{slug(request.name)}",
-            "description": f"{model.name} deal room ({STORE}). Domain: {domain_name}. Sensitivity: {sensitivity}.",
-            "groupTypes": ["Unified"], "mailEnabled": True, "securityEnabled": False,
-            "visibility": "Private" if sensitivity != "Public" else "Public",
-            "owners@odata.bind": [f"{GRAPH}/users/{me['id']}"],
-            "members@odata.bind": [f"{GRAPH}/users/{i}" for i in [me["id"], *member_ids]],
-        }
-        if label_id(sensitivity):
+        nickname = f"deal-{slug(request.name)}"
+        existing = call("GET", f"{GRAPH}/groups?$filter=" + urllib.parse.quote(f"mailNickname eq '{nickname}'")
+                        + "&$select=id,assignedLabels").get("value", [])
+        if existing:
+            # Resume only the caller's own room, at the sensitivity it was created with.
+            group = existing[0]
+            owners = {o["id"] for o in call("GET", f"{GRAPH}/groups/{group['id']}/owners?$select=id").get("value", [])}
+            if me["id"] not in owners:
+                raise Refused(f"A deal room called {request.name} already exists and you do not own it.")
+            labels = {l.get("labelId") for l in group.get("assignedLabels", [])}
+            if label_id(sensitivity) and label_id(sensitivity) not in labels:
+                raise Refused(f"{request.name} already exists with a different sensitivity; it was not changed.")
+            steps.append({"step": "resume", "group_id": group["id"]})
+        else:
+            group_body = {
+                "displayName": request.name, "mailNickname": nickname,
+                "description": f"{model.name} deal room ({STORE}). Domain: {domain_name}. Sensitivity: {sensitivity}.",
+                "groupTypes": ["Unified"], "mailEnabled": True, "securityEnabled": False,
+                "visibility": "Private" if sensitivity != "Public" else "Public",
+                "owners@odata.bind": [f"{GRAPH}/users/{me['id']}"],
+                "members@odata.bind": [f"{GRAPH}/users/{i}" for i in [me["id"], *member_ids]],
+            }
+            if not label_id(sensitivity):
+                raise Refused(f"No sensitivity label is configured for {sensitivity}; no room was created.")
             group_body["assignedLabels"] = [{"labelId": label_id(sensitivity)}]
-        try:
-            group = call("POST", f"{GRAPH}/groups", group_body)
-            steps.append({"step": "create-group", "group_id": group["id"], "label": sensitivity if label_id(sensitivity) else None})
-        except urllib.error.HTTPError as error:
-            if "is not assigned to current user" not in str(error.reason):
+            try:
+                group = call("POST", f"{GRAPH}/groups", group_body)
+            except urllib.error.HTTPError as error:
+                if "is not assigned to current user" in str(error.reason):
+                    # The label is the native control that keeps guests out; without it, do nothing.
+                    raise Refused(f"The {sensitivity} label is not yet available to you, so no room was created. "
+                                  "Newly published labels can take a few hours to reach people.") from None
                 raise
-            # Newly published labels take hours to reach users. Create the room private and unlabelled, and say so.
-            group_body.pop("assignedLabels")
-            group = call("POST", f"{GRAPH}/groups", group_body)
-            steps.append({"step": "create-group", "group_id": group["id"], "label": None,
-                          "label_pending": f"{sensitivity} label not yet available to this user; room created Private"})
+            steps.append({"step": "create-group", "group_id": group["id"], "label": sensitivity})
+        record["group_id"] = group["id"]
 
         site = None
         for _ in range(40):
@@ -154,9 +177,11 @@ def create(model: Model, request: DealRoomRequest) -> dict:
         ]
         spo = f"https://{urllib.parse.urlparse(site['webUrl']).netloc}"
         fields_api = f"{site['webUrl']}/_api/web/lists(guid'{library['id']}')/fields"
+        have = {c["name"] for c in call("GET", f"{GRAPH}/sites/{site['id']}/lists/{library['id']}/columns?$select=name").get("value", [])}
         for column in columns:
             default = column.pop("defaultValue")["value"]
-            call("POST", f"{GRAPH}/sites/{site['id']}/lists/{library['id']}/columns", column)
+            if column["name"] not in have:
+                call("POST", f"{GRAPH}/sites/{site['id']}/lists/{library['id']}/columns", column)
             # Graph accepts but does not store column defaults; SharePoint's own API does.
             call("POST", f"{fields_api}/getbyinternalnameortitle('{column['name']}')", {"DefaultValue": default},
                  resource=spo, headers={"X-HTTP-Method": "MERGE", "IF-MATCH": "*"})
@@ -164,13 +189,10 @@ def create(model: Model, request: DealRoomRequest) -> dict:
         defaults = {f["InternalName"].removeprefix("Contoso"): f.get("DefaultValue") for f in readback.get("value", [])}
         steps.append({"step": "library-defaults", "verified": defaults})
 
-        if label_id(sensitivity):
-            try:
-                call("POST", f"{site['webUrl']}/_api/web/lists(guid'{library['id']}')", {"DefaultSensitivityLabelForLibrary": label_id(sensitivity)},
-                     resource=spo, headers={"X-HTTP-Method": "MERGE", "IF-MATCH": "*"})
-                steps.append({"step": "library-default-label", "label": sensitivity})
-            except urllib.error.HTTPError as error:
-                steps.append({"step": "library-default-label", "skipped": f"HTTP {error.code}"})
+        call("POST", f"{site['webUrl']}/_api/web/lists(guid'{library['id']}')",
+             {"DefaultSensitivityLabelForLibrary": label_id(sensitivity)},
+             resource=spo, headers={"X-HTTP-Method": "MERGE", "IF-MATCH": "*"})
+        steps.append({"step": "library-default-label", "label": sensitivity})
 
         if request.file_from_inbox:
             query = urllib.parse.quote(f'"{request.file_from_inbox}"')
@@ -194,15 +216,16 @@ def create(model: Model, request: DealRoomRequest) -> dict:
 
         record["result"] = "created"
         record["site"] = site["webUrl"]
-        record["group_id"] = group["id"]
         return {"result": "created", "deal_room": request.name, "site": site["webUrl"], "steps": steps}
     except Refused as refusal:
         record["result"] = "refused"
         record["reason"] = str(refusal)
         return {"result": "refused", "reason": str(refusal)}
-    except Exception as error:  # fail closed and say what happened
-        record["result"] = "error"
+    except Exception as error:
+        # If the group exists, it stays (private, labelled); the same request resumes it.
+        record["result"] = "incomplete" if record.get("group_id") else "error"
         record["reason"] = f"{type(error).__name__}: {error}"[:500]
-        return {"result": "error", "reason": record["reason"], "steps": steps}
+        hint = " Ask again with the same request to finish setting it up." if record.get("group_id") else ""
+        return {"result": record["result"], "reason": record["reason"] + hint, "steps": steps}
     finally:
         receipt(record)
