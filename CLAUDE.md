@@ -31,21 +31,34 @@ seat. Describe everything else. The repository is the proof and must survive an 
   small enough to read in a minute.
 - **Native Microsoft owns what changes fast**: deal room instances, team membership, documents, sharing.
   The model never manages who is on a deal team.
-- **The compiler** is a Claude Code Skill that drives Microsoft's own tooling (CLI for Microsoft 365 and
-  `az`). It runs at change time as the platform owner, never in a user's request path. It emits native
-  objects, then runs **discover → remediate → report** over deal rooms that users create themselves.
-  If it is switched off, the tenant keeps working; only automation and drift checks stop.
+- **Two pieces of code, both deterministic:**
+  - **The compiler** (change time). Runs when the model changes, as the platform owner, through a Claude
+    Code Skill that edits the model, validates it, shows the plan, applies on approval and reports.
+    It emits the model-level objects (domain groups, term sets, content type, site and team templates,
+    Fabric domain and roles) and produces the conformance report. Never in a user's request path.
+  - **The backplane MCP server** (runtime). The tools an agent calls on a user's behalf, starting with
+    `create_deal_room`. Input schemas are generated from the LinkML model, so required fields the user
+    leaves out (e.g. sensitivity) make the agent ask. Each tool checks the model's rules (may this role
+    open a deal room in this domain?), then does the work **as the calling user** with their own
+    sign-in: the partner owns the new site, so no admin rights are used at runtime. Every call writes
+    a receipt.
+- **Agents propose, code applies, a human approves.** No agent touches the tenant except through these
+  deterministic tools.
+- If both are switched off, the tenant keeps working as plain Microsoft 365; only automation, the
+  agent's deal-room tool and drift checks stop.
 - **Tags are the source of truth for access.** Microsoft grants data access almost entirely through
-  groups and roles (Fabric tags and domains do not affect access), so the compiler turns tag rules into
-  Entra groups, team and site permissions, Fabric workspace roles and label settings.
+  groups and roles (Fabric tags and domains do not affect access), so tag rules compile into Entra
+  groups, team and site permissions, Fabric workspace roles and label settings.
 
 Decisions already taken (rationale in `docs/decisions.md`):
 
 | Decision | Choice | Rejected |
 |---|---|---|
 | Source of truth | LinkML model in git | Terraform (infrastructure layer, wrong owner); hand-configured tenant |
-| Applying the model | Claude Code Skill + CLI for Microsoft 365 + `az` | Terraform providers; custom service |
-| Deal rooms | Teams template, created by users; compiler applies site template and tags on discovery | Approval workflow and Logic Apps provisioning (described only) |
+| Applying the model | Deterministic compiler, operated through a Claude Code Skill, using CLI for Microsoft 365 + `az` | Terraform providers; an agent acting on the tenant directly |
+| Deal rooms | The partner asks their agent; the backplane MCP tool creates and tags the room as the partner | Users clicking through templates; approval workflow and Logic Apps provisioning (described only) |
+| Partner's agent | **A:** Copilot in Outlook/Teams (Copilot Studio agent → MCP server hosted in Azure Functions, on-behalf-of sign-in, no stored secret), if pay-as-you-go authoring works. **B:** Claude desktop app beside Outlook with the same MCP server running locally as the partner. Same tools, model and guardrails either way | Per-user Copilot or Copilot Studio licences |
+| Tenant | The existing tenant plus a Microsoft 365 E5 trial; the demo runs only from Contoso persona browser profiles | A new tenant (cleaner, but slower) |
 | Confidential vs public | Private teams with a sensitivity label vs a firm-wide research site; normal permission trimming | Restricted Content Discovery (hides from members too), Restricted SharePoint Search (retiring) |
 | Metric interchange | Apache Ossie named as the future emit target for term-to-measure bindings; not built | Building on a 0.2 draft with no access constructs |
 | AI over documents | SharePoint agent via Copilot Chat pay-as-you-go | Per-user Microsoft 365 Copilot licences |
@@ -56,13 +69,15 @@ Decisions already taken (rationale in `docs/decisions.md`):
 Every beat starts from a business event, and names where the firm's own systems would plug in. Anything not
 needed for these beats is out of scope unless the owner agrees otherwise.
 
-1. **A CIM arrives for Project Atlas** (0:00). As the partner, in Teams: new team from the "Deal Room"
-   template, Confidential label, add the associate, drop in the CIM. *Plug-in: in practice the CIM arrives
-   from a banker's virtual data room or an inbox; that intake would trigger this step.*
-2. **The backplane does the rest** (0:45). Run the compiler from Claude Code. Show why it knew what to do:
-   the model (domains, roles, terms, rules in one file). It finds Atlas, applies the site template and the
-   domain, deal and sensitivity tags. Open the CIM's properties: tagged, by nobody. The conformance report
-   shows Atlas conformant.
+1. **A CIM arrives for Project Atlas** (0:00). The partner has the banker's email open in Outlook and tells
+   their agent: "Set up a deal room for Project Atlas, add Priya and Sam, and file the CIM from my inbox."
+   *Plug-in: in practice the CIM arrives from a banker's virtual data room or the deal inbox.*
+2. **The model asks, the backplane builds** (0:30). The partner didn't say how confidential Atlas is; the
+   tool's schema (from the model) requires it, so the agent asks. The partner answers "Confidential". The
+   agent calls the backplane MCP tool, which checks the model's rules and, as the partner, creates the
+   team, applies the site template and the domain, deal and sensitivity tags, adds the members and files
+   the CIM. Open the CIM's properties: tagged, by nobody. Show the receipt and the model that drove it.
+   Nobody from IT or the platform team is involved.
 3. **Research and contextualisation** (1:45). The partner asks the Atlas agent for the CIM's key risks and
    how the business compares with similar portfolio companies; it answers with citations. *Plug-in: this is
    where licensed research, prior IC memos and sector theses join as further stores, each declared in the
@@ -74,11 +89,11 @@ needed for these beats is out of scope unless the owner agrees otherwise.
    are behind plan on EBITDA; the answer uses the same glossary terms that tag the documents. *Plug-in: the
    firm's warehouse, semantic models or portfolio monitoring tool sit here; terms bind to whatever
    calculation finance already treats as authoritative.*
-6. **The firm licenses a new data source** (4:00). In Claude Code: "Onboard a new data source to Private
+6. **The firm licenses a new data source** (4:00). The platform owner, in Claude Code: "Onboard a new data source to Private
    Equity". One model change, compiled, confirmed in the conformance report, the git diff as the audit
    trail. Today that is a ticket to each team that owns a piece of it.
-7. **Close** (4:45). Every object traces to its domain, terms and access. Switch the compiler off and
-   everything still works; only automation and drift checks stop.
+7. **Close** (4:45). Every object traces to its domain, terms and access. Switch the backplane off and
+   everything still works as plain Microsoft 365; only the automation and drift checks stop.
 
 Slow steps (agent answers take 20-60 seconds) are started early and talked over. The analyst's department
 is set well before the call, because dynamic group updates take minutes.
@@ -89,28 +104,39 @@ the research site, and the existing portfolio data.
 ## Definition of done
 
 **Tenant**
-- [ ] New Microsoft 365 E5 trial tenant (with Teams), auto-renew off, self-service trials and purchases off
-- [ ] Licences assigned to a group; three personas (partner, analyst on another deal, ops lead who owns
-      the glossary), each used from its own browser profile
-- [ ] Pay-as-you-go Azure subscription in the tenant; F2 capacity, paused when idle
+- [ ] Microsoft 365 E5 trial added to the existing tenant (with Teams), recurring billing off,
+      self-service trials and purchases off
+- [ ] Licences assigned to a group; three Contoso personas (partner, analyst on another deal, ops lead who
+      owns the glossary), each used only from its own browser profile
+- [ ] F2 capacity in the existing subscription, paused when idle
 - [ ] Copilot Chat pay-as-you-go billing policy scoped to the personas group
 
-**Model and compiler**
+**Model and compiler (change time)**
 - [ ] LinkML schema and Contoso instance data, validated in CI; `gen-doc` output in `docs/`
-- [ ] Compiler Skill emits: dynamic domain groups (from the user's department), term store sets and
-      terms, content type and per-domain site templates, the Teams "Deal Room" template, Fabric domain,
-      tags and workspace roles; the portfolio store redeployed from the repo
-- [ ] Discover → remediate → report over deal rooms; the conformance report shows every store's domain,
-      terms and access group, and drift
+- [ ] Compiler, operated through a Claude Code Skill (validate → plan → apply → report), emits:
+      dynamic domain groups (from the user's department), term sets and terms, content type and
+      per-domain site templates, the Fabric domain, tags and workspace roles; the portfolio store
+      redeployed from the repo
+- [ ] Conformance report: every store's domain, terms and access group, and drift
+
+**Backplane MCP server (runtime)**
+- [ ] `create_deal_room` tool: input schema generated from the model; rule check against the model;
+      runs as the calling user; creates the team with its label, applies the site template and library
+      defaults, adds members, files the CIM, writes a receipt
+- [ ] Verified from the Claude desktop app as the partner (option B)
+- [ ] Pay-as-you-go authoring check for Copilot Studio (about 10 minutes, $0). If it passes: the same
+      server hosted in Azure Functions with on-behalf-of sign-in and no stored secret, behind a Copilot
+      Studio agent in Outlook and Teams (option A). If it fails: B is the demo and A is described
 
 **One proof per primitive, from the user's seat**
 - [ ] Identity: setting a persona's department places them in the right domain group, nothing else done
-- [ ] Group membership: the partner creates "Project Atlas" from the Teams template and adds the team
-- [ ] Business terms: Atlas files carry domain, deal and sensitivity tags no user applied; portfolio
+- [ ] Group membership: the partner's request creates "Project Atlas" with the right members
+- [ ] Business terms: the CIM carries domain, deal and sensitivity tags no user applied; portfolio
       measures carry the same glossary terms
-- [ ] Entitlements: research visible to all; Atlas only to its team; portfolio only to its domain; an AI
-      answer per persona (SharePoint agent on Atlas, Fabric data agent on the portfolio)
-- [ ] Observability: conformance report, model history in git, Microsoft 365 audit log entries
+- [ ] Entitlements: the agent asks for the missing sensitivity; research visible to all; Atlas only to
+      its team; portfolio only to its domain; an AI answer per persona (SharePoint agent on Atlas, Fabric
+      data agent on the portfolio)
+- [ ] Observability: receipts, conformance report, model history in git, Microsoft 365 audit log entries
 
 **The live moment**
 - [ ] In Claude Code: "Onboard a new data source to Private Equity": one model change, compiled,
@@ -123,7 +149,18 @@ the research site, and the existing portfolio data.
 - [ ] Adversarial review by an agent finds no false claims, gaps or security own-goals
 - [ ] CI green before merge; history clean of secrets, tenant identifiers and forbidden names
 
-**Budget:** about $15 or less. Free where possible, never more than $100.
+**Budget:** about $15 or less. Free where possible, never more than $100. No purchase with a
+multi-month commitment.
+
+## Build order
+
+1. Microsoft 365 E5 trial and personas (owner starts the trial; the rest is scripted).
+2. LinkML model and schema, merging `config/profiles/contoso.yaml` and `config/glossary.yaml`.
+3. Compiler and conformance report for the model-level objects.
+4. Backplane MCP server with `create_deal_room`; verify end to end from the Claude desktop app (B).
+5. In parallel: the Copilot Studio pay-as-you-go check. Then A if it passes.
+6. Portfolio store redeployed; SharePoint agent on Atlas; research site and demo content.
+7. Docs, evidence, adversarial review, merge.
 
 ## Environment facts
 
@@ -131,7 +168,8 @@ the research site, and the existing portfolio data.
   Pro below F64 (included in E5). **Pause the capacity when a session ends.**
 - Microsoft Graph cannot set library default column values or library default sensitivity labels, and
   term store writes are delegated-only; use the CLI for Microsoft 365 or SharePoint REST for those.
-- An automation identity cannot apply a container sensitivity label; the user chooses it at team creation.
+- An app-only identity cannot apply a container sensitivity label; the backplane applies it as the calling
+  user, which Microsoft allows.
 - Scripts a human runs on Windows target PowerShell 5.1 (no `&&` or `||`). Claude Code runs in bash.
 - The owner prefers one consolidated, single-paste command block over step-by-step sequences.
 
@@ -173,8 +211,8 @@ Resources left running. An abstraction layer bigger than the problem it solves.
 
 ## Current state
 
-A first build in a different tenant (2026-10-12) proved the portfolio store: sample data, lakehouse, TMDL
+A first build (2026-10-12) proved the portfolio store in this tenant: sample data, lakehouse, TMDL
 semantic model with glossary-bound measures, a data agent keyed by the workspace identity, and access
-proofs (`results/2026-10-12/`). It is the starting point for the portfolio store in the new tenant.
-`gateway/`, `bootstrap/` and `infra/` predate the current design; keep, rework or remove them as part of
-the rebuild, and record which.
+proofs (`results/2026-10-12/`). Its F2 capacity is paused. It is the starting point for the portfolio
+store. `gateway/`, `bootstrap/` and `infra/` predate the current design; keep, rework or remove them as
+part of the rebuild, and record which.
