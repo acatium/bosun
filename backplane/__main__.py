@@ -56,7 +56,8 @@ def main() -> int:
         drift = [s for s in target.plan(model) if s["op"] == "drift"]
         print(f"\n{name}: {len(steps)} change(s)")
         for step in steps:
-            detail = step.get("group") or step.get("term") or step.get("item_name") or step.get("tag") or step.get("name") or step.get("domain") or ""
+            detail = (step.get("term") or step.get("table") or step.get("set") or step.get("group")
+                      or step.get("item_name") or step.get("tag") or step.get("name") or step.get("domain") or "")
             print(f"  {step['op']:<14} {detail}")
         for step in drift:
             print(f"  drift          {step['term']}: {step['detail']} (fix by hand or in the model)")

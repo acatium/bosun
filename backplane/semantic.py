@@ -13,7 +13,7 @@ import os
 import re
 import urllib.request
 
-from .azure import fabric, fabric_lro, token
+from .azure import az_rest, fabric, fabric_lro, token
 from .model import ROOT, Model
 
 ONELAKE = "https://onelake.dfs.fabric.microsoft.com"
@@ -71,7 +71,9 @@ def agent_instructions(model: Model) -> str:
     return (f"You answer questions about {model.name} portfolio companies using only the measures in the "
             "semantic model. Never compute figures yourself from raw columns.\n"
             "These are the only defined business terms:\n" + terms + "\n"
-            "For every figure, state the term and the as-of period. If a question uses a term that is not in "
+            "For every figure, state the term and its exact as-of date. Unless the question names a period, report "
+            "monthly terms for the latest month in the data only, never summed across months, and report terms "
+            "calculated from cash flows as of the latest valuation date in the data. If a question uses a term that is not in "
             "this list, say it is not a defined term and name the closest defined terms instead of guessing. "
             "Amounts are in USD thousands unless the term says otherwise.")
 
@@ -105,7 +107,14 @@ def plan(model: Model) -> list[dict]:
             else:
                 steps.append({"op": "drift", "term": term["name"],
                               "detail": f"measure '{term['measure']}' is missing and the term has no calculation"})
-    current = json.loads(agent_definition().get("Files/Config/published/stage_config.json", "{}")).get("aiInstructions", "")
+    agent = agent_definition()
+    for path, text in agent.items():
+        if path.endswith("datasource.json"):
+            selected = {e["display_name"] for e in json.loads(text).get("elements", []) if e.get("is_selected")}
+            for ds in datasets(model):
+                if ds["table"] not in selected:
+                    steps.append({"op": "agent-add-table", "table": ds["table"], "path": path})
+    current = json.loads(agent.get("Files/Config/published/stage_config.json", "{}")).get("aiInstructions", "")
     if current != agent_instructions(model):
         steps.append({"op": "update-agent-vocabulary", "terms": len([t for t in model.terms.values() if t.get("measure")])})
     return steps
@@ -161,13 +170,29 @@ def apply(model: Model, steps: list[dict]) -> list[str]:
             header_end = text.index("\n\n", text.index(f"table {step['table']}")) + 2
             parts[path] = text[:header_end] + measure + text[header_end:]
             done.append(f"added measure '{step['measure']}' for term {step['term']}")
+        # The SQL endpoint must see new tables before Direct Lake can read them.
+        fabric_lro("POST", f"/workspaces/{env('BOSUN_FABRIC_WORKSPACE_ID')}/sqlEndpoints/"
+                           f"{env('BOSUN_SQL_ENDPOINT_ID')}/refreshMetadata", {})
         fabric_lro("POST", f"/workspaces/{env('BOSUN_FABRIC_WORKSPACE_ID')}/semanticModels/"
                            f"{env('BOSUN_SEMANTIC_MODEL_ID')}/updateDefinition",
                    {"definition": {"parts": [{"path": k, "payload": base64.b64encode(v.encode()).decode(),
                                               "payloadType": "InlineBase64"} for k, v in parts.items()]}})
 
-    if any(s["op"] == "update-agent-vocabulary" for s in steps):
+    if model_steps:
+        az_rest("POST", f"https://api.powerbi.com/v1.0/myorg/groups/{env('BOSUN_FABRIC_WORKSPACE_ID')}/datasets/"
+                        f"{env('BOSUN_SEMANTIC_MODEL_ID')}/refreshes", {"type": "full"},
+                resource="https://analysis.windows.net/powerbi/api")
+        done.append("refreshed the semantic model so the new table and measure are queryable")
+
+    agent_steps = [s for s in steps if s["op"] in ("agent-add-table", "update-agent-vocabulary")]
+    if agent_steps:
         parts = agent_definition()
+        for step in [s for s in agent_steps if s["op"] == "agent-add-table"]:
+            source = json.loads(parts[step["path"]])
+            source.setdefault("elements", []).append({"id": None, "is_selected": True, "display_name": step["table"],
+                                                      "type": "semantic_model.table", "description": None, "children": []})
+            parts[step["path"]] = json.dumps(source, indent=2)
+            done.append(f"let the data agent see table {step['table']} ({step['path'].split('/')[2]})")
         for stage in ("draft", "published"):
             key = f"Files/Config/{stage}/stage_config.json"
             config = json.loads(parts.get(key, "{}"))
@@ -178,5 +203,6 @@ def apply(model: Model, steps: list[dict]) -> list[str]:
                            f"{env('BOSUN_DATA_AGENT_ID')}/updateDefinition",
                    {"definition": {"parts": [{"path": k, "payload": base64.b64encode(v.encode()).decode(),
                                               "payloadType": "InlineBase64"} for k, v in parts.items()]}})
-        done.append("regenerated the data agent's vocabulary from the model")
+        if any(s["op"] == "update-agent-vocabulary" for s in agent_steps):
+            done.append("regenerated the data agent's vocabulary from the model")
     return done

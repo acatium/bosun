@@ -99,6 +99,11 @@ unless the owner agrees otherwise.
    vocabulary, and the conformance report shows it. The partner asks again and gets Fabrikam's IRR under
    the agreed definition, as of quarter end, with the source named. Normally that is four teams (data
    ingestion, BI, catalog, access) and weeks; here it is one decision and one reviewed change.
+   **Framing (agreed):** access needed no compiling, because the data landed in a governed store. The
+   definition was one decision by its owner. Everything else is Microsoft plumbing that doesn't yet
+   follow tags (semantic model tables, the agent's table list, SQL endpoint sync), so the compiler does
+   it: exactly the work four teams coordinate today. When Microsoft's semantic layer and agents discover
+   by tag, those compiler steps disappear and the model doesn't change.
 4. **Close** (4:15-5:00). Every object traces to its domain, terms and access. Switch the backplane off
    and everything still works as plain Microsoft 365. "I built this with Claude Code; the repo holds every
    decision and its evidence. Agents propose, deterministic code applies, a human approves: that's how
