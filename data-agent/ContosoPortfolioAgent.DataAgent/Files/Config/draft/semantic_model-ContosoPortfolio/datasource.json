@@ -1,0 +1,26 @@
+{
+  "$schema": "1.0.0",
+  "artifactId": "{{SEMANTIC_MODEL_ID}}",
+  "workspaceId": "{{WORKSPACE_ID}}",
+  "displayName": "Contoso Portfolio",
+  "type": "semantic_model",
+  "userDescription": "Governed semantic model for Contoso Capital portfolio value management. Each measure is bound to one term in the business glossary.",
+  "dataSourceInstructions": "Answer with the model's measures (Revenue, Plan Revenue, EBITDA, Plan EBITDA, EBITDA vs Plan %, EBITDA Margin %, LTM EBITDA, Net Debt, Leverage x, Initiative Target Uplift). Filter companies by companies[company_name].",
+  "elements": [
+    {
+      "display_name": "companies",
+      "type": "semantic_model.table",
+      "is_selected": true
+    },
+    {
+      "display_name": "monthly_financials",
+      "type": "semantic_model.table",
+      "is_selected": true
+    },
+    {
+      "display_name": "value_creation_initiatives",
+      "type": "semantic_model.table",
+      "is_selected": true
+    }
+  ]
+}

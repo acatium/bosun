@@ -1,68 +1,57 @@
 # Bosun
 
-A governed AI platform, demonstrated on **Contoso Capital**, a fictional alternative investment firm.
-(Contoso is Microsoft's standard fictional company. Everything else here is built from scratch.)
+A proof of concept on Microsoft 365, Entra and Fabric for **Contoso Capital**, a fictional private markets firm.
 
-Bosun shows how an investment firm can let people use AI agents freely, because the rules that keep
-it safe are enforced in code rather than in prompts or policy documents.
+**The idea:** one model of the firm's governance (domains, roles, business terms, data stores, access rules) is
+compiled into Microsoft's native controls, and agents act through deterministic tools that obey it. Governance
+happens automatically instead of by tickets between teams.
 
-## The idea in one paragraph
+## What you're looking at
 
-A small set of governed primitives (identity, organizational domains, a closed business glossary and
-an ontology) sits underneath everything. People work through a **user-scoped orchestrator** that runs
-as them and holds no keys. Behind it, **store-scoped agents** each hold one key to one data store,
-limited to specific actions, and can be invoked only by people who can already access that store.
-A **deterministic harness** checks every call and output: untraced figures are blocked, outputs
-inherit the strictest label of their sources, and every agent action is logged.
+| Part | In one line |
+|---|---|
+| **Model** ([`model/contoso.yaml`](model/contoso.yaml)) | The firm in LinkML: 3 domains, 4 roles, 10 business terms, 5 stores, 5 rules. Start here |
+| **Compiler** ([`backplane/`](backplane/)) | Applies the model to the tenant: Entra groups, Fabric domains and roles, term store, semantic model measures, data agent instructions. Plans before it applies; reports drift. Run by the platform owner through a Claude Code Skill ([`.claude/skills/backplane/`](.claude/skills/backplane/SKILL.md)) |
+| **MCP tool** ([`backplane/deal_room.py`](backplane/deal_room.py)) | `create_deal_room`: an agent opens a labelled, private deal room as the person asking. Input schema generated from the model; refuses what the rules forbid; writes a receipt |
+| **Portfolio store** ([`semantic-model/`](semantic-model/), [`data-agent/`](data-agent/)) | Fabric semantic model and data agent over fictional portfolio data, using the model's terms |
 
-## How changes flow
+Design choices and rejected alternatives: [`docs/decisions.md`](docs/decisions.md). All names are Microsoft's
+standard fictional ones. Built with Claude Code.
 
-Nothing in this environment is changed by hand.
+## What was shown
 
-1. Agents (Claude in chat or Claude Code) propose changes as pull requests.
-2. CI runs deterministic guardrail checks and an Azure what-if preview.
-3. A human owner approves. Merges to `main` deploy through the `production` environment.
-4. GitHub Actions signs in to Azure with workload identity federation. There are no stored secrets
-   for Azure anywhere in this repo or its settings.
+| Result | Evidence |
+|---|---|
+| The compiler converges: re-planning after apply shows zero changes; the conformance report is clean | [rerun](results/2026-10-13/rerun.md) |
+| Portfolio access follows the compiled groups: the partner is answered, an outsider is refused by Fabric | [rerun](results/2026-10-13/rerun.md) |
+| The data agent's answers match DAX run against the model (EBITDA variance, leverage); it refuses IRR while IRR is undefined | [golden questions](results/2026-10-13/golden-questions.md) |
+| An agent asked for the sensitivity the user omitted, prompted only by the model-generated schema (4 of 4 runs) | [model talks back](results/2026-10-13/model-talks-back.md) |
+| `create_deal_room` refuses guests on Confidential rooms, unknown people, a missing label and a changed sensitivity, naming the rule | [refusals](results/2026-10-13/refusals.md) |
+| It fails closed live: with the label not yet published to the partner, nothing was created | [retry](results/2026-10-14/deal-room-retry.md) |
+| One model change adds Gross IRR end to end (data, measure, term, agent instructions); the measure matches an independent XIRR | [IRR rehearsal](results/2026-10-13/irr-rehearsal.md) |
+| Model validation, generated-code check and 14 offline tests run in CI | [`ci.yml`](.github/workflows/ci.yml), [`tests/`](tests/) |
 
-## Validation
+## Known gaps
 
-Each claim the architecture makes has a pass/fail test. Results are captured in [`results/`](results/).
+- **No deal room has been created end to end yet.** The label policy was published on 2026-10-14 and had not
+  reached the partner when last retried ([retry](results/2026-10-14/deal-room-retry.md)).
+- **IRR answers are unreliable.** After the IRR change the data agent answered correctly 2 of 5 times, with no
+  wrong figures; the measure itself is correct ([IRR retest](results/2026-10-14/irr-hidden-keys.md)).
+- Data agent answers are generated queries, not deterministic.
+- The MCP server runs on the partner's machine; its rule checks guard the agent's path. The sensitivity label is
+  the native control for everyone else.
+- Access is per store, not per table.
+- Sensitivity labels are created by an admin script outside the repository.
+- No Microsoft 365 audit log evidence captured. Copilot Studio as the front end was not built.
 
-| # | Test | What passing proves | Status |
-|---|------|---------------------|--------|
-| 1 | Keyed store | An agent can read the one store it holds a key to, and is denied every other | Pending |
-| 2 | Invocation gate | A person outside a store's access group cannot make its agent act | Pending |
-| 3 | Orchestrator runs as the user | Two people asking the same question see only what each can access | Pending |
-| 4 | Provision and teardown | A deal room appears in minutes and its agent's key is revoked on retirement | Pending |
-| 5 | Label inheritance | A saved output carries the strictest label among its sources | Pending |
-| 6 | Citation guardrail | An answer containing an untraced figure is blocked, with the reason shown | Pending |
-| 7 | Ontology contracts | A malformed tool output is rejected deterministically | Pending |
-| 8 | Audit trail | Every action in tests 1-7 appears in the agent action log | Pending |
-
-## Repository layout
+## Layout
 
 | Path | Purpose |
-|------|---------|
-| `config/profiles/` | Firm profiles: domains, personas and owners, the org primitives as data. `contoso.yaml` is the example |
-| `config/guardrails.yaml` | Firm-agnostic rules: prefix format, allowed Azure resource types, allowed Graph permissions |
-| `tools/` | Deterministic checks run in CI: guardrails, portability and deny-list |
-| `infra/` | Azure infrastructure (Bicep) |
-| `bootstrap/` | The one manual step: creating the trust between GitHub and Entra ID |
-| `results/` | Captured validation results |
-| `.env.example` | Every environment-specific setting, named and documented. None of them are secrets |
+|---|---|
+| `model/` | LinkML schema and the Contoso model |
+| `backplane/` | Compiler (`python -m backplane validate\|plan\|apply\|report`) and MCP server |
+| `semantic-model/`, `data-agent/`, `data/` | Portfolio store definitions and fictional data |
+| `results/` | Evidence from runs |
+| `docs/`, `evals/`, `tests/`, `tools/` | Decisions, golden questions, tests, repository checks |
 
-## Adopting it
-
-Bosun is built to be adopted, not just demonstrated. A firm creates its own copy from this template,
-adds its profile, fills in `.env` and runs bootstrap once. CI then refuses any change that hard-codes a
-tenant, subscription or organization identifier, so the repository stays portable as it grows.
-See [PORTING.md](PORTING.md).
-
-## Environment notes
-
-- Runs on Microsoft 365 E3. Features that need E5 (default library labels, access reviews, lifecycle
-  workflows) are implemented by the harness instead, which keeps the guardrails under the platform's
-  own control on any licence tier.
-- All Azure resources live in one resource group, named with the firm profile's prefix, and are torn
-  down after validation.
+[`REPLICATE.md`](REPLICATE.md) describes rebuilding it in another tenant.

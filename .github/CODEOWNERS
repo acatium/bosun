@@ -1,5 +1,4 @@
-# Every change needs owner review. Guardrails and pipeline changes are called out explicitly.
+# Every change needs owner review. The model and the pipeline are called out explicitly.
 *                       @acatium-ct
-/config/guardrails.yaml @acatium-ct
 /.github/               @acatium-ct
-/bootstrap/             @acatium-ct
+/model/                 @acatium-ct

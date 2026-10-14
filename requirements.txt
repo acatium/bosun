@@ -1,0 +1,5 @@
+# Pinned dependencies for the backplane (compiler, MCP server) and its checks.
+linkml==1.12.0
+mcp==2.3.0
+pyyaml==6.0.2
+reportlab==4.4.4

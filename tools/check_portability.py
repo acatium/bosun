@@ -1,6 +1,6 @@
 """Fails if environment-specific values are hard-coded anywhere in the repository.
 
-Tenant IDs, subscription IDs, client IDs and the GitHub owner belong in .env (local, gitignored)
+Tenant IDs, subscription IDs, client IDs, the tenant's email domain, its SharePoint host and the GitHub owner belong in .env (local, gitignored)
 and GitHub repository variables, never in tracked files. This keeps the repository portable:
 any firm can adopt it as a template without inheriting another firm's identifiers.
 """
@@ -13,12 +13,12 @@ GUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 WELL_KNOWN_GUIDS = {
     "00000003-0000-0000-c000-000000000000",  # Microsoft Graph's public application ID
 }
-# Files that legitimately name the current owner. Both are listed in PORTING.md as files to update.
+# Files that legitimately name the current owner; a firm adopting this repository updates both.
 EXEMPT = {"LICENSE", ".github/CODEOWNERS"}
 
 values = {
     name: os.environ.get(name, "").strip().lower()
-    for name in ("AZURE_TENANT_ID", "AZURE_SUBSCRIPTION_ID", "AZURE_CLIENT_ID", "GITHUB_OWNER")
+    for name in ("AZURE_TENANT_ID", "AZURE_SUBSCRIPTION_ID", "AZURE_CLIENT_ID", "GITHUB_OWNER", "TENANT_DOMAIN", "SHAREPOINT_HOST")
 }
 
 tracked = subprocess.run(["git", "ls-files"], capture_output=True, text=True, check=True).stdout.splitlines()

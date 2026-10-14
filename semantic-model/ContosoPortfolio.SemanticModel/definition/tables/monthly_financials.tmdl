@@ -1,0 +1,110 @@
+/// Monthly operating figures per company. scenario = Actual or Plan (the value creation plan).
+table monthly_financials
+
+	/// Glossary term "Revenue". Actual revenue, USD thousands.
+	measure Revenue = CALCULATE ( SUM ( monthly_financials[revenue_usd_k] ), monthly_financials[scenario] = "Actual" )
+		formatString: #,0
+
+	/// Glossary term "Plan revenue". Value creation plan revenue, USD thousands.
+	measure 'Plan Revenue' = CALCULATE ( SUM ( monthly_financials[revenue_usd_k] ), monthly_financials[scenario] = "Plan" )
+		formatString: #,0
+
+	/// Glossary term "EBITDA". Actual EBITDA, USD thousands.
+	measure EBITDA = CALCULATE ( SUM ( monthly_financials[ebitda_usd_k] ), monthly_financials[scenario] = "Actual" )
+		formatString: #,0
+
+	/// Glossary term "Plan EBITDA". Value creation plan EBITDA, USD thousands.
+	measure 'Plan EBITDA' = CALCULATE ( SUM ( monthly_financials[ebitda_usd_k] ), monthly_financials[scenario] = "Plan" )
+		formatString: #,0
+
+	/// Glossary term "EBITDA variance to plan". Negative means behind plan.
+	measure 'EBITDA vs Plan %' = DIVIDE ( [EBITDA] - [Plan EBITDA], [Plan EBITDA] )
+		formatString: 0.0%
+
+	/// Glossary term "EBITDA margin". Actual EBITDA divided by actual revenue.
+	measure 'EBITDA Margin %' = DIVIDE ( [EBITDA], [Revenue] )
+		formatString: 0.0%
+
+	/// Glossary term "LTM EBITDA". Actual EBITDA over the twelve months ending at the latest month in context, USD thousands.
+	measure 'LTM EBITDA' = ```
+			VAR LastMonth = MAX ( monthly_financials[month] )
+			RETURN
+			    CALCULATE (
+			        SUM ( monthly_financials[ebitda_usd_k] ),
+			        monthly_financials[scenario] = "Actual",
+			        monthly_financials[month] > EDATE ( LastMonth, -12 ),
+			        monthly_financials[month] <= LastMonth
+			    )
+			```
+		formatString: #,0
+
+	/// Glossary term "Net debt". Actual net debt at the latest month in context, USD millions.
+	measure 'Net Debt' = ```
+			VAR LastMonth = MAX ( monthly_financials[month] )
+			RETURN
+			    CALCULATE (
+			        SUM ( monthly_financials[net_debt_usd_m] ),
+			        monthly_financials[scenario] = "Actual",
+			        monthly_financials[month] = LastMonth
+			    )
+			```
+		formatString: #,0.0
+
+	/// Glossary term "Leverage". Net debt divided by LTM EBITDA.
+	measure 'Leverage x' = DIVIDE ( [Net Debt] * 1000, [LTM EBITDA] )
+		formatString: 0.0"x"
+
+	column company_id
+		isHidden
+		dataType: string
+		sourceColumn: company_id
+		summarizeBy: none
+
+	column month
+		dataType: dateTime
+		formatString: yyyy-mm
+		sourceColumn: month
+		summarizeBy: none
+
+	column scenario
+		dataType: string
+		sourceColumn: scenario
+		summarizeBy: none
+
+	column revenue_usd_k
+		dataType: double
+		sourceColumn: revenue_usd_k
+		summarizeBy: sum
+
+	column cogs_usd_k
+		dataType: double
+		sourceColumn: cogs_usd_k
+		summarizeBy: sum
+
+	column opex_usd_k
+		dataType: double
+		sourceColumn: opex_usd_k
+		summarizeBy: sum
+
+	column ebitda_usd_k
+		dataType: double
+		sourceColumn: ebitda_usd_k
+		summarizeBy: sum
+
+	column net_debt_usd_m
+		dataType: double
+		sourceColumn: net_debt_usd_m
+		summarizeBy: sum
+
+	column headcount
+		dataType: int64
+		sourceColumn: headcount
+		summarizeBy: sum
+
+	partition monthly_financials = entity
+		mode: directLake
+		source
+			entityName: monthly_financials
+			schemaName: dbo
+			expressionSource: DatabaseQuery
+
