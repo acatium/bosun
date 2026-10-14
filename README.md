@@ -36,8 +36,9 @@ Choices made and alternatives not taken: [`docs/decisions.md`](docs/decisions.md
 
 ## Known gaps
 
-- No deal room has yet been created end to end: the Confidential label has not reached the partner, so
-  `create_deal_room` refuses ([`results/2026-10-13/rerun.md`](results/2026-10-13/rerun.md)).
+- No deal room has yet been created end to end. Until 2026-10-14 no label policy published the labels, so
+  `create_deal_room` refused ([`results/2026-10-13/rerun.md`](results/2026-10-13/rerun.md)). The policy now
+  exists and is propagating.
 - After the Gross IRR change, the data agent answered the IRR question correctly once (rehearsal) and
   failed in four later runs: no query generated, an access error, and one wrong figure (7.38% for every
   company) ([`results/2026-10-13/rerun.md`](results/2026-10-13/rerun.md)). The measure itself is correct.

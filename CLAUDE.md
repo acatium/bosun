@@ -246,8 +246,8 @@ Re-run results are in `results/2026-10-13/rerun.md`; open gaps are listed in the
 
 - Compiler converges (zero changes); conformance report conformant; golden questions pass as the partner;
   the outsider is refused.
-- The Confidential label has still not reached the partner, so `create_deal_room` refuses. Owner to check
-  the label policy in Windows PowerShell.
+- No label policy existed until 2026-10-14 17:44 UTC, when the owner created `contoso-labels`. Once it
+  distributes, retry "Project Dryrun" as the partner.
 - After the Gross IRR change, the data agent answered 0 of 10 IRR questions correctly (one wrong figure).
   The tenant is reset to the committed model. No fix agreed yet.
 - Reporting rule from the owner: docs state what was built, what was shown, and known gaps, without

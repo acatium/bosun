@@ -92,7 +92,9 @@ As the outsider (an analyst in the Private Equity domain, not covered by any rea
 Newly published labels can take a few hours to reach people."}
 ```
 
-No group was created. The label policy was published on 2026-10-12.
+No group was created. Cause, found 2026-10-14: no label policy existed in the tenant (`Get-LabelPolicy` returned
+nothing), so the labels were not published to anyone. The policy `contoso-labels` (the three Contoso labels,
+published to the five personas) was created on 2026-10-14 at 17:44 UTC.
 
 ## Gross IRR after the model change
 
