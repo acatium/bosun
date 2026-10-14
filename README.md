@@ -42,6 +42,8 @@ Choices made and alternatives not taken: [`docs/decisions.md`](docs/decisions.md
 - After the Gross IRR change, the data agent answered the IRR question correctly once (rehearsal) and
   failed in four later runs: no query generated, an access error, and one wrong figure (7.38% for every
   company) ([`results/2026-10-13/rerun.md`](results/2026-10-13/rerun.md)). The measure itself is correct.
+  With relationship columns hidden (2026-10-14): 2 of 5 correct, 0 wrong figures, 3 without an answer
+  ([`results/2026-10-14/irr-hidden-keys.md`](results/2026-10-14/irr-hidden-keys.md)).
 - Data agent answers are generated queries, not deterministic; golden questions cover three questions.
 - The MCP server runs on the partner's machine; its rule checks apply to the agent's path only.
 - Access is per store, not per table.
