@@ -240,15 +240,9 @@ An audit trail nobody can query. Personal email, tenant IDs or live public endpo
 public repository. Claims of "production-ready", tests that do not test, or results without evidence.
 Resources left running. An abstraction layer bigger than the problem it solves.
 
-## Current state (2026-10-13, morning re-run)
+## Current state
 
-Re-run results are in `results/2026-10-13/rerun.md`; open gaps are listed in the README.
+What was built, what was shown and the open gaps are in the README, with evidence in `results/`.
 
-- Compiler converges (zero changes); conformance report conformant; golden questions pass as the partner;
-  the outsider is refused.
-- No label policy existed until 2026-10-14 17:44 UTC, when the owner created `contoso-labels`. Once it
-  distributes, retry "Project Dryrun" as the partner.
-- After the Gross IRR change, the data agent answered 0 of 10 IRR questions correctly (one wrong figure).
-  The tenant is reset to the committed model. No fix agreed yet.
-- Reporting rule from the owner: docs state what was built, what was shown, and known gaps, without
-  commentary or future-state recommendations.
+Reporting rule from the owner: docs state what was built, what was shown, and known gaps, without
+commentary or future-state recommendations.
