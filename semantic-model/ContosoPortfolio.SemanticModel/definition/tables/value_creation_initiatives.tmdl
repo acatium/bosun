@@ -6,6 +6,7 @@ table value_creation_initiatives
 		formatString: #,0
 
 	column company_id
+		isHidden
 		dataType: string
 		sourceColumn: company_id
 		summarizeBy: none

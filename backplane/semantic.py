@@ -91,6 +91,34 @@ def measures_in(parts: dict[str, str]) -> set[str]:
     return found
 
 
+def key_columns(parts: dict[str, str]) -> set[tuple[str, str]]:
+    """Columns used in relationships, as (table, column)."""
+    text = parts.get("definition/relationships.tmdl", "")
+    return {tuple(m.group(1).split(".", 1)) for m in re.finditer(r"^\s*(?:from|to)Column:\s*(\S+)", text, re.MULTILINE)}
+
+
+def visible_key_columns(parts: dict[str, str]) -> list[tuple[str, str]]:
+    """Relationship columns not hidden. Hidden keys make generated queries group by names (e.g. company_name),
+    whose filters reach every related table, instead of by one table's own key."""
+    found = []
+    for table, column in sorted(key_columns(parts)):
+        text = parts.get(f"definition/tables/{table}.tmdl", "")
+        block = re.search(rf"^\tcolumn {re.escape(column)}\n((?:\t\t[^\n]*\n)*)", text, re.MULTILINE)
+        if block and not re.search(r"^\t\tisHidden\b", block.group(1), re.MULTILINE):
+            found.append((table, column))
+    return found
+
+
+def hide_key_columns(parts: dict[str, str]) -> list[str]:
+    hidden = []
+    for table, column in visible_key_columns(parts):
+        path = f"definition/tables/{table}.tmdl"
+        parts[path] = re.sub(rf"^(\tcolumn {re.escape(column)}\n)", r"\1\t\tisHidden\n", parts[path],
+                             count=1, flags=re.MULTILINE)
+        hidden.append(f"{table}.{column}")
+    return hidden
+
+
 def normalise(expression: str) -> str:
     return re.sub(r"\s+", "", expression)
 
@@ -115,6 +143,8 @@ def plan(model: Model) -> list[dict]:
     for ds in datasets(model):
         if ds["table"] not in tables:
             steps.append({"op": "add-table", "store": ds["id"], "table": ds["table"]})
+    for table, column in visible_key_columns(parts):
+        steps.append({"op": "hide-key-column", "table": table, "column": column})
     present = measures_in(parts)
     expressions = measure_expressions(parts)
     for term_id, term in model.terms.items():
@@ -173,7 +203,7 @@ def apply(model: Model, steps: list[dict]) -> list[str]:
         _load(step)
         done.append(f"loaded {step['file']} into {step['table']}")
 
-    model_steps = [s for s in steps if s["op"] in ("add-table", "add-measure")]
+    model_steps = [s for s in steps if s["op"] in ("add-table", "add-measure", "hide-key-column")]
     if model_steps:
         parts = semantic_definition()
         for step in [s for s in model_steps if s["op"] == "add-table"]:
@@ -186,6 +216,8 @@ def apply(model: Model, steps: list[dict]) -> list[str]:
                     f"\n\nrelationship {step['table']}_company\n\tfromColumn: {step['table']}.company_id\n"
                     f"\ttoColumn: companies.company_id\n")
             done.append(f"added table {step['table']} to the semantic model")
+        for column in hide_key_columns(parts):
+            done.append(f"hid relationship column {column}")
         for step in [s for s in model_steps if s["op"] == "add-measure"]:
             path = f"definition/tables/{step['table']}.tmdl"
             text = parts[path]

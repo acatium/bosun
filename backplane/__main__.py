@@ -59,6 +59,8 @@ def main() -> int:
         for step in steps:
             detail = (step.get("term") or step.get("table") or step.get("set") or step.get("group")
                       or step.get("item_name") or step.get("tag") or step.get("name") or step.get("domain") or "")
+            if step["op"] == "hide-key-column":
+                detail = f"{step['table']}.{step['column']}"
             if "/draft/" in step.get("path", "") or "/published/" in step.get("path", ""):
                 detail += " (draft config)" if "/draft/" in step["path"] else " (published config)"
             print(f"  {step['op']:<14} {detail}")

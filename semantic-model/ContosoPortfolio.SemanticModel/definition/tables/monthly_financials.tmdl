@@ -55,6 +55,7 @@ table monthly_financials
 		formatString: 0.0"x"
 
 	column company_id
+		isHidden
 		dataType: string
 		sourceColumn: company_id
 		summarizeBy: none
