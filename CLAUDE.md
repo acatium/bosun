@@ -21,7 +21,7 @@ The thesis: in a large firm every one of these components is owned and configure
 between them: the "coordination tax". When one owner holds the primitives as a single model and compiles
 it into the platform, that tax disappears. Users never tag anything and never raise a ticket.
 
-This is a first-round interview demo, not an enterprise build. Prove each primitive once, from the user's
+This is a proof of concept, not an enterprise build. Prove each primitive once, from the user's
 seat. Describe everything else. The repository is the proof and must survive an antagonistic audit.
 
 ## Design
@@ -131,7 +131,7 @@ the same tool would also create the Team on that group; governance is unchanged.
 ## Definition of done
 
 **Tenant**
-- [ ] Microsoft 365 E5 (no Teams) trial in the existing tenant; not cancelled until after the interview
+- [ ] Microsoft 365 E5 (no Teams) trial in the existing tenant; not cancelled while the demo is in use
       (cancelling suspends licences immediately); self-service trials and purchases off
 - [ ] Licences assigned to a group; three Contoso personas (partner, analyst on another deal, ops lead who
       owns the glossary), each used only from its own browser profile
